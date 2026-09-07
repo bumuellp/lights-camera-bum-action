@@ -47,7 +47,12 @@ runs:
       id: meta
       shell: bash
       run: |
-        TAGS="$("${{ github.action_path }}/compute_tags.sh" "${{ inputs.registry }}" "${{ inputs.repository-owner }}" "${{ inputs.image-name }}" "${{ inputs.sha }}" "${{ inputs.extra-tags }}")"
+        TAGS="$("${{ github.action_path }}/compute_tags.sh" \
+          "${{ inputs.registry }}" \
+          "${{ inputs.repository-owner }}" \
+          "${{ inputs.image-name }}" \
+          "${{ inputs.sha }}" \
+          "${{ inputs.extra-tags }}")"
         {
           echo "tags<<EOF"
           echo "$TAGS"
@@ -63,4 +68,3 @@ runs:
         tags: ${{ steps.meta.outputs.tags }}
         cache-from: type=gha,scope=${{ inputs.image-name }}
         cache-to: type=gha,mode=max,scope=${{ inputs.image-name }}
-

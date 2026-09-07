@@ -83,11 +83,12 @@ jobs:
           sha: ${{ github.sha }}
           username: ${{ github.actor }}
           password: ${{ secrets.registry-token }}
-          extra-tags: ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
+          extra-tags: >-
+            ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
           registry: ${{ inputs.registry }}
 
-
       - name: Cache Trivy Vulnerability DB
+
         if: ${{ inputs.scan-with-trivy }}
         uses: actions/cache@v6
         with:
