@@ -1,3 +1,4 @@
+---
 name: Pre-Commit Lint and Validate
 description: Run pre-commit hooks with caching across all files.
 inputs:

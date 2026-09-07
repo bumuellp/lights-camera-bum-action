@@ -1,3 +1,4 @@
+---
 name: Build and Push GHCR Image
 description: Set up Buildx, log in to GHCR, and build a Docker/OCI image with GitHub Actions caching.
 inputs:
