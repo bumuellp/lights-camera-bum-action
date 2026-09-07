@@ -7,9 +7,9 @@ inputs:
     required: false
     default: auto
   target:
-    description: Target image name to rebuild on dispatch or 'all'
+    description: Target image name to rebuild on dispatch, 'all', or 'auto' for diff
     required: false
-    default: all
+    default: auto
 outputs:
   matrix:
     description: JSON matrix string formatted for GitHub Actions strategy

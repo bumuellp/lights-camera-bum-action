@@ -51,32 +51,75 @@ def test_parse_image_definitions_auto_discovery(tmp_path, monkeypatch):
     assert images[1]["name"] == "service-b"
 
 
-def test_should_build_image_workflow_dispatch():
+def test_should_build_image_explicit_targets():
     image = {"name": "app", "path": "images/app", "dockerfile": "images/app/Dockerfile"}
-    assert should_build_image(image, "workflow_dispatch", "all", []) is True
-    assert should_build_image(image, "workflow_dispatch", "app", []) is True
-    assert should_build_image(image, "workflow_dispatch", "other", []) is False
+    assert should_build_image(image, "all", []) is True
+    assert should_build_image(image, "app", []) is True
+    assert should_build_image(image, "other", []) is False
 
 
-def test_should_build_image_push_events():
+def test_should_build_image_multi_target_selection():
+    img1 = {"name": "lint-tools", "path": "images/lint-tools", "dockerfile": "images/lint-tools/Dockerfile"}
+    img2 = {"name": "mcpo", "path": "images/mcpo", "dockerfile": "images/mcpo/Dockerfile"}
+    img3 = {"name": "openclaw", "path": "images/openclaw", "dockerfile": "images/openclaw/Dockerfile"}
+
+    # Comma-separated
+    target_str = "lint-tools, mcpo"
+    assert should_build_image(img1, target_str, []) is True
+    assert should_build_image(img2, target_str, []) is True
+    assert should_build_image(img3, target_str, []) is False
+
+    # Space-separated
+    target_space = "mcpo openclaw"
+    assert should_build_image(img1, target_space, []) is False
+    assert should_build_image(img2, target_space, []) is True
+    assert should_build_image(img3, target_space, []) is True
+
+
+def test_should_build_image_none_or_empty_custom():
     image = {"name": "app", "path": "images/app", "dockerfile": "images/app/Dockerfile"}
-    assert should_build_image(image, "push", "all", ["images/app/src/main.py"]) is True
-    assert should_build_image(image, "push", "all", ["images/app/Dockerfile"]) is True
-    assert should_build_image(image, "push", "all", ["images/other/file.txt"]) is False
+    assert should_build_image(image, "none", []) is False
+    assert should_build_image(image, "none", ["images/app/Dockerfile"]) is False
 
 
-def test_plan_builds_full_pipeline():
+def test_should_build_image_auto_path_detection():
+    image = {"name": "app", "path": "images/app", "dockerfile": "images/app/Dockerfile"}
+    assert should_build_image(image, "auto", ["images/app/src/main.py"]) is True
+    assert should_build_image(image, "auto", ["images/app/Dockerfile"]) is True
+    assert should_build_image(image, "auto", ["images/other/file.txt"]) is False
+    assert should_build_image(image, "auto", []) is False
+
+
+def test_plan_builds_full_pipeline_multi_target():
     raw_images = json.dumps([
-        {"name": "app1", "path": "images/app1"},
-        {"name": "app2", "path": "images/app2"},
+        {"name": "lint-tools", "path": "images/lint-tools"},
+        {"name": "mcpo", "path": "images/mcpo"},
+        {"name": "openclaw", "path": "images/openclaw"},
     ])
     matrix, should_build = plan_builds(
         raw_images=raw_images,
-        target="app1",
-        event_name="workflow_dispatch",
+        target="lint-tools, openclaw",
         before_sha="",
         head_sha="",
     )
     assert should_build is True
-    assert len(matrix["include"]) == 1
-    assert matrix["include"][0]["image-name"] == "app1"
+    assert len(matrix["include"]) == 2
+    names = [item["image-name"] for item in matrix["include"]]
+    assert "lint-tools" in names
+    assert "openclaw" in names
+    assert "mcpo" not in names
+
+
+def test_plan_builds_empty_selection_no_op():
+    raw_images = json.dumps([
+        {"name": "lint-tools", "path": "images/lint-tools"},
+        {"name": "mcpo", "path": "images/mcpo"},
+    ])
+    matrix, should_build = plan_builds(
+        raw_images=raw_images,
+        target="none",
+        before_sha="",
+        head_sha="",
+    )
+    assert should_build is False
+    assert len(matrix["include"]) == 0

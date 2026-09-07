@@ -10,10 +10,10 @@ name: Reusable Deploy Images
         type: string
         default: auto
       target:
-        description: Target image name to rebuild on dispatch or 'all'
+        description: Target image name to rebuild on dispatch, 'all', or 'auto' for diff
         required: false
         type: string
-        default: all
+        default: auto
       scan-with-trivy:
         description: Whether to scan built images with Trivy
         required: false

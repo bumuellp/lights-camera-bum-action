@@ -45,28 +45,27 @@ def parse_image_definitions(raw_images: str) -> list:
     return discovered
 
 
-def get_changed_files(event_name: str, before_sha: str, head_sha: str) -> list:
-    """Get list of changed files for push events."""
-    if event_name != "push":
-        return []
-
+def get_changed_files(before_sha: str, head_sha: str) -> list:
+    """Get list of changed files from git diff."""
+    diff_cmds = []
     if before_sha and not before_sha.startswith("0000000"):
-        diff_cmd = ["git", "diff", "--name-only", before_sha, head_sha or "HEAD"]
-    else:
-        diff_cmd = ["git", "diff", "--name-only", "HEAD~1", "HEAD"]
+        diff_cmds.append(["git", "diff", "--name-only", before_sha, head_sha or "HEAD"])
+    diff_cmds.append(["git", "diff", "--name-only", "HEAD~1", "HEAD"])
+    diff_cmds.append(["git", "diff", "--name-only", "origin/main...HEAD"])
+    diff_cmds.append(["git", "diff", "--name-only", "HEAD"])
 
-    try:
-        res = subprocess.run(diff_cmd, capture_output=True, text=True, check=False)
-        if res.returncode == 0:
-            return [line.strip() for line in res.stdout.splitlines() if line.strip()]
-    except Exception:
-        pass
+    for cmd in diff_cmds:
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            if res.returncode == 0 and res.stdout.strip():
+                return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+        except Exception:
+            pass
     return []
 
 
 def should_build_image(
     image: dict,
-    event_name: str,
     target: str,
     changed_files: list,
 ) -> bool:
@@ -75,13 +74,26 @@ def should_build_image(
     path = image["path"]
     dockerfile = image["dockerfile"]
 
-    if event_name == "workflow_dispatch":
-        return target in ("all", "", name)
+    # Normalize targets: supports comma/space-separated values (e.g., "mcpo, openclaw", "none")
+    raw_targets = {t.strip() for t in target.replace(",", " ").split() if t.strip()}
+    if not raw_targets:
+        raw_targets = {"auto"}
 
-    # For push events:
-    if not changed_files:
-        # If diff couldn't be obtained or initial commit, build to be safe
+    # 1. Force all images
+    if "all" in raw_targets:
         return True
+
+    # 2. Explicit 'none' (e.g., custom mode with no checkboxes checked)
+    if "none" in raw_targets:
+        return False
+
+    # 3. Explicit subset or single image (e.g. "mcpo, openclaw" or "lint-tools")
+    if "auto" not in raw_targets:
+        return name in raw_targets
+
+    # 4. Auto mode: git diff path filtering
+    if not changed_files:
+        return False
 
     for changed in changed_files:
         if path and (changed == path or changed.startswith(f"{path}/")):
@@ -94,17 +106,16 @@ def should_build_image(
 def plan_builds(
     raw_images: str,
     target: str,
-    event_name: str,
     before_sha: str,
     head_sha: str,
 ) -> tuple[dict, bool]:
     """Generate the GitHub Actions matrix and should-build flag."""
     images = parse_image_definitions(raw_images)
-    changed_files = get_changed_files(event_name, before_sha, head_sha)
+    changed_files = get_changed_files(before_sha, head_sha)
 
     include = []
     for img in images:
-        if should_build_image(img, event_name, target, changed_files):
+        if should_build_image(img, target, changed_files):
             include.append({
                 "image-name": img["name"],
                 "context": img["path"] or ".",
@@ -119,14 +130,12 @@ def plan_builds(
 def main() -> None:
     raw_images = os.environ.get("INPUT_IMAGES", "auto")
     target = os.environ.get("INPUT_TARGET", "all")
-    event_name = os.environ.get("GITHUB_EVENT_NAME", "push")
     before_sha = os.environ.get("GITHUB_EVENT_BEFORE", "")
     head_sha = os.environ.get("GITHUB_SHA", "")
 
     matrix, should_build = plan_builds(
         raw_images=raw_images,
         target=target,
-        event_name=event_name,
         before_sha=before_sha,
         head_sha=head_sha,
     )
