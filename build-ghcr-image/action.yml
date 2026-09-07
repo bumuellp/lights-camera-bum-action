@@ -23,6 +23,10 @@ inputs:
   password:
     description: GHCR password or token.
     required: true
+  extra-tags:
+    description: Additional comma- or newline-separated tags (e.g. v1, v1.0.0).
+    required: false
+    default: ''
   registry:
     description: Container registry host.
     required: false
@@ -39,14 +43,24 @@ runs:
         username: ${{ inputs.username }}
         password: ${{ inputs.password }}
 
+    - name: Compute Image Tags
+      id: meta
+      shell: bash
+      run: |
+        TAGS="$("${{ github.action_path }}/compute_tags.sh" "${{ inputs.registry }}" "${{ inputs.repository-owner }}" "${{ inputs.image-name }}" "${{ inputs.sha }}" "${{ inputs.extra-tags }}")"
+        {
+          echo "tags<<EOF"
+          echo "$TAGS"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Build and Push Image
       uses: docker/build-push-action@v7
       with:
         context: ${{ inputs.context }}
         file: ${{ inputs.dockerfile }}
         push: true
-        tags: |
-          ${{ inputs.registry }}/${{ inputs.repository-owner }}/${{ inputs.image-name }}:latest
-          ${{ inputs.registry }}/${{ inputs.repository-owner }}/${{ inputs.image-name }}:${{ inputs.sha }}
+        tags: ${{ steps.meta.outputs.tags }}
         cache-from: type=gha,scope=${{ inputs.image-name }}
         cache-to: type=gha,mode=max,scope=${{ inputs.image-name }}
+

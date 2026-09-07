@@ -19,6 +19,11 @@ name: Reusable Deploy Images
         required: false
         type: boolean
         default: true
+      extra-tags:
+        description: Comma- or newline-separated extra tags (e.g. 'v1, v1.0.0')
+        required: false
+        type: string
+        default: ''
       registry:
         description: Container registry host
         required: false
@@ -78,7 +83,9 @@ jobs:
           sha: ${{ github.sha }}
           username: ${{ github.actor }}
           password: ${{ secrets.registry-token }}
+          extra-tags: ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
           registry: ${{ inputs.registry }}
+
 
       - name: Cache Trivy Vulnerability DB
         if: ${{ inputs.scan-with-trivy }}
