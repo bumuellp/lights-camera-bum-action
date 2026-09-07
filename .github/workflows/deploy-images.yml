@@ -124,3 +124,19 @@ jobs:
           push: true
           load: false
           registry: ${{ inputs.registry }}
+
+  cleanup:
+    name: Cleanup Stale Packages
+    needs: [plan, build-and-push]
+    if: always() && needs.build-and-push.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Run Retention Cleanup
+        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@v1
+        with:
+          package-names: ${{ inputs.images }}
+          repository-owner: ${{ github.repository_owner }}
+          token: ${{ secrets.registry-token }}
+          keep-sha-count: '5'

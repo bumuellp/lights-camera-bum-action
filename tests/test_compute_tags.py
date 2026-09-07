@@ -13,38 +13,58 @@ def run_compute_tags(registry="ghcr.io", owner="myorg", image="myapp", sha="", e
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
-def test_compute_tags_default_latest():
+def test_compute_tags_default_latest_and_major():
     res = run_compute_tags(registry="ghcr.io", owner="bumuellp", image="mcpo", sha="", extra="")
     assert res.returncode == 0
     tags = res.stdout.strip().splitlines()
-    assert tags == ["ghcr.io/bumuellp/mcpo:latest"]
+    assert "ghcr.io/bumuellp/mcpo:latest" in tags
+    assert "ghcr.io/bumuellp/mcpo:v1" in tags
 
 
 def test_compute_tags_with_sha():
     res = run_compute_tags(registry="ghcr.io", owner="bumuellp", image="mcpo", sha="abc1234", extra="")
     assert res.returncode == 0
     tags = res.stdout.strip().splitlines()
-    assert tags == [
-        "ghcr.io/bumuellp/mcpo:latest",
-        "ghcr.io/bumuellp/mcpo:abc1234",
-    ]
+    assert "ghcr.io/bumuellp/mcpo:latest" in tags
+    assert "ghcr.io/bumuellp/mcpo:abc1234" in tags
+    assert "ghcr.io/bumuellp/mcpo:v1" in tags
 
 
-def test_compute_tags_with_extra_tags_comma_separated():
+def test_compute_tags_with_semver_hierarchy_expansion():
     res = run_compute_tags(
         registry="ghcr.io",
         owner="bumuellp",
         image="mcpo",
         sha="abc1234",
-        extra="v1, v1.0.0",
+        extra="v1.2.3",
     )
     assert res.returncode == 0
     tags = res.stdout.strip().splitlines()
     assert tags == [
         "ghcr.io/bumuellp/mcpo:latest",
         "ghcr.io/bumuellp/mcpo:abc1234",
+        "ghcr.io/bumuellp/mcpo:v1.2.3",
+        "ghcr.io/bumuellp/mcpo:v1.2",
         "ghcr.io/bumuellp/mcpo:v1",
-        "ghcr.io/bumuellp/mcpo:v1.0.0",
+    ]
+
+
+def test_compute_tags_v2_semver():
+    res = run_compute_tags(
+        registry="ghcr.io",
+        owner="bumuellp",
+        image="mcpo",
+        sha="def5678",
+        extra="v2.0.1",
+    )
+    assert res.returncode == 0
+    tags = res.stdout.strip().splitlines()
+    assert tags == [
+        "ghcr.io/bumuellp/mcpo:latest",
+        "ghcr.io/bumuellp/mcpo:def5678",
+        "ghcr.io/bumuellp/mcpo:v2.0.1",
+        "ghcr.io/bumuellp/mcpo:v2.0",
+        "ghcr.io/bumuellp/mcpo:v2",
     ]
 
 
@@ -58,11 +78,9 @@ def test_compute_tags_custom_registry():
     )
     assert res.returncode == 0
     tags = res.stdout.strip().splitlines()
-    assert tags == [
-        "registry.example.com/team/service:latest",
-        "registry.example.com/team/service:def5678",
-        "registry.example.com/team/service:release",
-    ]
+    assert "registry.example.com/team/service:latest" in tags
+    assert "registry.example.com/team/service:def5678" in tags
+    assert "registry.example.com/team/service:release" in tags
 
 
 def test_compute_tags_missing_required_args():

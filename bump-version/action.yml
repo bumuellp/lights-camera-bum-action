@@ -1,0 +1,35 @@
+---
+name: Bump Version
+description: Automated Semantic Version calculation based on Conventional Commits since last release tag.
+inputs:
+  force-bump:
+    description: Force bump type ('auto', 'patch', 'minor', 'major')
+    required: false
+    default: auto
+outputs:
+  next-version:
+    description: Calculated next SemVer tag (e.g. v1.0.1)
+    value: ${{ steps.bump.outputs.next-version }}
+  major-version:
+    description: Floating major tag (e.g. v1)
+    value: ${{ steps.bump.outputs.major-version }}
+  minor-version:
+    description: Floating minor tag (e.g. v1.0)
+    value: ${{ steps.bump.outputs.minor-version }}
+  bump-type:
+    description: Type of bump applied ('major', 'minor', 'patch', 'none')
+    value: ${{ steps.bump.outputs.bump-type }}
+  previous-version:
+    description: Highest existing SemVer tag found
+    value: ${{ steps.bump.outputs.previous-version }}
+  has-changes:
+    description: Boolean indicating whether new commits exist since previous release
+    value: ${{ steps.bump.outputs.has-changes }}
+runs:
+  using: composite
+  steps:
+    - id: bump
+      shell: bash
+      env:
+        INPUT_FORCE_BUMP: ${{ inputs.force-bump }}
+      run: python3 "${{ github.action_path }}/bump.py"
