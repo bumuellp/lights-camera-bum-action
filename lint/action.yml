@@ -11,4 +11,4 @@ runs:
   entrypoint: '/bin/sh'
   args:
     - '-c'
-    - 'pre-commit run ${{ inputs.extra-args }}'
+    - 'git config --global --add safe.directory "$GITHUB_WORKSPACE" && PRE_COMMIT_HOME=/tmp/pre-commit pre-commit run ${{ inputs.extra-args }}'
