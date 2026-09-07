@@ -29,6 +29,10 @@ name: Reusable Deploy Images
         description: GitHub token or PAT with packages write permission
         required: true
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   plan:
     name: Plan Image Builds
@@ -54,6 +58,9 @@ jobs:
     needs: plan
     if: ${{ needs.plan.outputs.should-build == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
