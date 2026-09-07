@@ -4,27 +4,59 @@ name: Reusable Deploy Images
 'on':
   workflow_call:
     inputs:
-      matrix:
-        description: JSON matrix string containing image configurations
-        required: true
+      images:
+        description: JSON array of image configurations or 'auto' for directory discovery
+        required: false
         type: string
+        default: auto
+      target:
+        description: Target image name to rebuild on dispatch or 'all'
+        required: false
+        type: string
+        default: all
       scan-with-trivy:
         description: Whether to scan built images with Trivy
         required: false
         type: boolean
         default: true
+      registry:
+        description: Container registry host
+        required: false
+        type: string
+        default: ghcr.io
     secrets:
       registry-token:
         description: GitHub token or PAT with packages write permission
         required: true
 
 jobs:
+  plan:
+    name: Plan Image Builds
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      should-build: ${{ steps.plan.outputs.should-build }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Plan Builds
+        id: plan
+        uses: bumuellp/lights-camera-bum-action/plan-image-builds@v1
+        with:
+          images: ${{ inputs.images }}
+          target: ${{ inputs.target }}
+
   build-and-push:
     name: Build ${{ matrix.image-name }}
+    needs: plan
+    if: ${{ needs.plan.outputs.should-build == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(inputs.matrix) }}
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -39,6 +71,7 @@ jobs:
           sha: ${{ github.sha }}
           username: ${{ github.actor }}
           password: ${{ secrets.registry-token }}
+          registry: ${{ inputs.registry }}
 
       - name: Cache Trivy Vulnerability DB
         if: ${{ inputs.scan-with-trivy }}
@@ -54,7 +87,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
-          image-ref: 'ghcr.io/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
+          image-ref: '${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
           trivy-config: trivy.yaml
           format: table
           exit-code: '1'

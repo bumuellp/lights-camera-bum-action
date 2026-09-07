@@ -16,4 +16,5 @@ repos:
       - id: secret-scan
       - id: shell-lint
       - id: yaml-xml-lint
+      - id: python-tests
       - id: trivy-security

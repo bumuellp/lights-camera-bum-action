@@ -34,46 +34,13 @@ runs:
   using: composite
   steps:
     - shell: bash
-      run: |
-        set -euo pipefail
-
-        remote="${{ inputs.ssh-user }}@${{ inputs.ssh-host }}"
-        remote_directory="${{ inputs.remote-directory }}"
-        local_path="${{ inputs.local-path }}"
-        exclude_from="${{ inputs.exclude-from }}"
-        rsync_args="${{ inputs.rsync-args }}"
-        key_path="${{ inputs.ssh-key-path }}"
-        ssh_args=(-i "$key_path" -o StrictHostKeyChecking=no)
-        ssh_transport="ssh -i $key_path -o StrictHostKeyChecking=no"
-
-        if [ -n "${{ inputs.ssh-port }}" ]; then
-          ssh_args+=(-p "${{ inputs.ssh-port }}")
-          ssh_transport="$ssh_transport -p ${{ inputs.ssh-port }}"
-        fi
-
-        ssh "${ssh_args[@]}" "$remote" "mkdir -p $remote_directory"
-
-        if [ -n "$exclude_from" ]; then
-          exclude_relative="$(basename "$exclude_from")"
-          if [[ "$exclude_from" == "$local_path"* ]]; then
-            exclude_relative="${exclude_from#"$local_path"/}"
-          fi
-          remote_exclude_target="$remote_directory/$exclude_relative"
-          remote_exclude_parent="$(dirname "$remote_exclude_target")"
-
-          ssh "${ssh_args[@]}" "$remote" "mkdir -p '$remote_exclude_parent'"
-          rsync -a -e "$ssh_transport" "$exclude_from" "$remote:$remote_exclude_target"
-        fi
-
-        rsync_command=(rsync)
-        if [ -n "$exclude_from" ]; then
-          rsync_command+=(--exclude-from="$exclude_from")
-        fi
-        if [ -n "$rsync_args" ]; then
-          # shellcheck disable=SC2206
-          rsync_command+=($rsync_args)
-        fi
-        rsync_command+=(-e "$ssh_transport")
-        rsync_command+=("$local_path" "$remote:$remote_directory/")
-
-        "${rsync_command[@]}"
+      env:
+        SSH_USER: ${{ inputs.ssh-user }}
+        SSH_HOST: ${{ inputs.ssh-host }}
+        SSH_PORT: ${{ inputs.ssh-port }}
+        SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
+        LOCAL_PATH: ${{ inputs.local-path }}
+        REMOTE_DIRECTORY: ${{ inputs.remote-directory }}
+        EXCLUDE_FROM: ${{ inputs.exclude-from }}
+        RSYNC_ARGS: ${{ inputs.rsync-args }}
+      run: bash "${{ github.action_path }}/sync.sh"

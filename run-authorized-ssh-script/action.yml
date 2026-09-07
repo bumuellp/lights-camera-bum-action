@@ -28,19 +28,10 @@ runs:
   steps:
     - shell: bash
       env:
-        REMOTE_COMMAND: ${{ inputs.remote-command }}
+        SSH_USER: ${{ inputs.ssh-user }}
+        SSH_HOST: ${{ inputs.ssh-host }}
+        SSH_PORT: ${{ inputs.ssh-port }}
+        SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
         ENV_PAYLOAD: ${{ inputs.env-payload }}
-      run: |
-        set -euo pipefail
-
-        remote="${{ inputs.ssh-user }}@${{ inputs.ssh-host }}"
-        remote_command="$REMOTE_COMMAND"
-        env_payload="$ENV_PAYLOAD"
-        key_path="${{ inputs.ssh-key-path }}"
-        ssh_args=(-i "$key_path" -o StrictHostKeyChecking=no)
-
-        if [ -n "${{ inputs.ssh-port }}" ]; then
-          ssh_args+=(-p "${{ inputs.ssh-port }}")
-        fi
-
-        printf '%s' "$env_payload" | ssh "${ssh_args[@]}" "$remote" "$remote_command"
+        REMOTE_COMMAND: ${{ inputs.remote-command }}
+      run: bash "${{ github.action_path }}/exec.sh"

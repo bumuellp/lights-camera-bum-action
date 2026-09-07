@@ -1,0 +1,31 @@
+---
+name: Plan Image Builds
+description: Plan parallel container builds from declarative image dictionary or directory discovery.
+inputs:
+  images:
+    description: JSON array of image configurations or 'auto' for directory discovery
+    required: false
+    default: auto
+  target:
+    description: Target image name to rebuild on dispatch or 'all'
+    required: false
+    default: all
+outputs:
+  matrix:
+    description: JSON matrix string formatted for GitHub Actions strategy
+    value: ${{ steps.plan.outputs.matrix }}
+  should-build:
+    description: Boolean string indicating whether at least one image needs building
+    value: ${{ steps.plan.outputs.should-build }}
+runs:
+  using: composite
+  steps:
+    - id: plan
+      shell: bash
+      env:
+        INPUT_IMAGES: ${{ inputs.images }}
+        INPUT_TARGET: ${{ inputs.target }}
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        GITHUB_SHA: ${{ github.sha }}
+      run: python3 "${{ github.action_path }}/plan.py"
