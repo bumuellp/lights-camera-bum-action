@@ -1,0 +1,14 @@
+name: Pre-Commit Lint and Validate
+description: Run pre-commit hooks with caching across all files.
+inputs:
+  extra-args:
+    description: Additional arguments to pass to pre-commit run.
+    required: false
+    default: '--all-files'
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/bumuellp/lint-tools:latest'
+  entrypoint: '/bin/sh'
+  args:
+    - '-c'
+    - 'pre-commit run ${{ inputs.extra-args }}'
