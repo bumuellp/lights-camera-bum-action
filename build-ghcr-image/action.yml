@@ -27,6 +27,14 @@ inputs:
     description: Additional comma- or newline-separated tags (e.g. v1, v1.0.0).
     required: false
     default: ''
+  push:
+    description: Whether to push the image to registry.
+    required: false
+    default: 'true'
+  load:
+    description: Whether to load the image into local Docker daemon.
+    required: false
+    default: 'false'
   registry:
     description: Container registry host.
     required: false
@@ -37,6 +45,7 @@ runs:
     - uses: docker/setup-buildx-action@v4
 
     - name: Log in to GHCR
+      if: ${{ inputs.push == 'true' }}
       uses: docker/login-action@v4.1.0
       with:
         registry: ${{ inputs.registry }}
@@ -64,7 +73,8 @@ runs:
       with:
         context: ${{ inputs.context }}
         file: ${{ inputs.dockerfile }}
-        push: true
+        push: ${{ inputs.push }}
+        load: ${{ inputs.load }}
         tags: ${{ steps.meta.outputs.tags }}
         cache-from: type=gha,scope=${{ inputs.image-name }}
         cache-to: type=gha,mode=max,scope=${{ inputs.image-name }}

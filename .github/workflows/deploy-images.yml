@@ -73,7 +73,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - name: Build and Push Image
+      - name: Build Image Locally
         uses: bumuellp/lights-camera-bum-action/build-ghcr-image@v1
         with:
           context: ${{ matrix.context }}
@@ -85,10 +85,11 @@ jobs:
           password: ${{ secrets.registry-token }}
           extra-tags: >-
             ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
+          push: false
+          load: true
           registry: ${{ inputs.registry }}
 
       - name: Cache Trivy Vulnerability DB
-
         if: ${{ inputs.scan-with-trivy }}
         uses: actions/cache@v6
         with:
@@ -107,3 +108,19 @@ jobs:
           format: table
           exit-code: '1'
           ignore-unfixed: true
+
+      - name: Push Image to GHCR
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@v1
+        with:
+          context: ${{ matrix.context }}
+          dockerfile: ${{ matrix.dockerfile }}
+          image-name: ${{ matrix.image-name }}
+          repository-owner: ${{ github.repository_owner }}
+          sha: ${{ github.sha }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.registry-token }}
+          extra-tags: >-
+            ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
+          push: true
+          load: false
+          registry: ${{ inputs.registry }}
