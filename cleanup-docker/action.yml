@@ -1,0 +1,15 @@
+---
+name: Cleanup Docker
+description: Shows Docker Compose logs on step failure and stops containers.
+runs:
+  using: composite
+  steps:
+    - name: Show Docker logs on failure
+      if: failure()
+      shell: bash
+      run: docker compose logs
+
+    - name: Cleanup Docker containers
+      if: always()
+      shell: bash
+      run: docker compose down -v

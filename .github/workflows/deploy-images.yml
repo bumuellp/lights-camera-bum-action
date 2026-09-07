@@ -1,0 +1,61 @@
+---
+name: Reusable Deploy Images
+
+'on':
+  workflow_call:
+    inputs:
+      matrix:
+        description: JSON matrix string containing image configurations
+        required: true
+        type: string
+      scan-with-trivy:
+        description: Whether to scan built images with Trivy
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      registry-token:
+        description: GitHub token or PAT with packages write permission
+        required: true
+
+jobs:
+  build-and-push:
+    name: Build ${{ matrix.image-name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(inputs.matrix) }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Build and Push Image
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@v1
+        with:
+          context: ${{ matrix.context }}
+          dockerfile: ${{ matrix.dockerfile }}
+          image-name: ${{ matrix.image-name }}
+          repository-owner: ${{ github.repository_owner }}
+          sha: ${{ github.sha }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.registry-token }}
+
+      - name: Cache Trivy Vulnerability DB
+        if: ${{ inputs.scan-with-trivy }}
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-cache-${{ runner.os }}
+          restore-keys: |
+            trivy-db-cache-${{ runner.os }}-
+
+      - name: Scan Built Image with Trivy
+        if: ${{ inputs.scan-with-trivy }}
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: 'ghcr.io/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
+          trivy-config: trivy.yaml
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true

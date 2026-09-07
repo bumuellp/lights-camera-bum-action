@@ -1,0 +1,25 @@
+---
+name: Free Disk Space
+description: Frees up disk space on GitHub-hosted runners by removing large pre-installed toolchains.
+runs:
+  using: composite
+  steps:
+    - name: Display disk space before cleanup
+      shell: bash
+      run: |
+        echo "Disk space before cleanup:"
+        df -h
+
+    - name: Remove unnecessary software
+      shell: bash
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+
+    - name: Display disk space after cleanup
+      shell: bash
+      run: |
+        echo "Disk space after cleanup:"
+        df -h

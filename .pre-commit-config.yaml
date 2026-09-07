@@ -10,7 +10,7 @@ repos:
         args: [--fix=lf]
 
   - repo: https://github.com/bumuellp/cabumtain-hook
-    rev: main
+    rev: v1
     hooks:
       - id: commit-msg
       - id: secret-scan

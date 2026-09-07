@@ -1,0 +1,46 @@
+---
+name: Run Authorized SSH Script
+description: Pipe environment payload to a remote authorized deploy script over SSH.
+inputs:
+  ssh-user:
+    description: Remote SSH username.
+    required: true
+  ssh-host:
+    description: Remote SSH host.
+    required: true
+  ssh-port:
+    description: Optional remote SSH port.
+    required: false
+    default: ''
+  ssh-key-path:
+    description: Path to the private SSH key file on the runner.
+    required: false
+    default: /runner_ssh_key
+  env-payload:
+    description: Environment payload to pipe into the remote script.
+    required: false
+    default: ''
+  remote-command:
+    description: Remote command to execute over SSH.
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        REMOTE_COMMAND: ${{ inputs.remote-command }}
+        ENV_PAYLOAD: ${{ inputs.env-payload }}
+      run: |
+        set -euo pipefail
+
+        remote="${{ inputs.ssh-user }}@${{ inputs.ssh-host }}"
+        remote_command="$REMOTE_COMMAND"
+        env_payload="$ENV_PAYLOAD"
+        key_path="${{ inputs.ssh-key-path }}"
+        ssh_args=(-i "$key_path" -o StrictHostKeyChecking=no)
+
+        if [ -n "${{ inputs.ssh-port }}" ]; then
+          ssh_args+=(-p "${{ inputs.ssh-port }}")
+        fi
+
+        printf '%s' "$env_payload" | ssh "${ssh_args[@]}" "$remote" "$remote_command"
