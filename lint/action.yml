@@ -6,9 +6,16 @@ inputs:
     required: false
     default: '--all-files'
 runs:
-  using: 'docker'
-  image: 'docker://ghcr.io/bumuellp/lint-tools:latest'
-  entrypoint: '/bin/sh'
-  args:
-    - '-c'
-    - 'HOME=/tmp PRE_COMMIT_HOME=/tmp/pre-commit git config --global --add safe.directory "*" && HOME=/tmp PRE_COMMIT_HOME=/tmp/pre-commit pre-commit run ${{ inputs.extra-args }}'
+  using: 'composite'
+  steps:
+    - name: Run Lint Tools Container
+      shell: bash
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}:/workspace" \
+          -w /workspace \
+          -u "$(id -u):$(id -g)" \
+          -e HOME=/tmp \
+          -e PRE_COMMIT_HOME=/tmp/pre-commit \
+          ghcr.io/bumuellp/lint-tools:latest \
+          sh -c 'git config --global --add safe.directory "*" && pre-commit run ${{ inputs.extra-args }}'
