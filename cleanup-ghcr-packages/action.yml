@@ -18,6 +18,10 @@ inputs:
     description: Number of recent commit SHA versions to retain
     required: false
     default: '5'
+  untagged-retention-days:
+    description: Number of days to retain unreferenced untagged versions (grace period)
+    required: false
+    default: '7'
   dry-run:
     description: Run without actually deleting versions
     required: false
@@ -30,6 +34,15 @@ runs:
         INPUT_PACKAGE_NAMES: ${{ inputs.package-names }}
         INPUT_REPOSITORY_OWNER: ${{ inputs.repository-owner }}
         INPUT_TOKEN: ${{ inputs.token }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GH_TOKEN: ${{ inputs.token }}
         INPUT_KEEP_SHA_COUNT: ${{ inputs.keep-sha-count }}
+        INPUT_UNTAGGED_RETENTION_DAYS: ${{ inputs.untagged-retention-days }}
         INPUT_DRY_RUN: ${{ inputs.dry-run }}
-      run: python3 "${{ github.action_path }}/cleanup.py"
+      run: |
+        if command -v uv >/dev/null 2>&1; then
+          uv run --with pygithub python3 "${{ github.action_path }}/cleanup.py"
+        else
+          pip install --quiet --break-system-packages pygithub 2>/dev/null || pip install --quiet pygithub
+          python3 "${{ github.action_path }}/cleanup.py"
+        fi
