@@ -16,11 +16,12 @@ repos:
       - id: check-github-workflows
 
   - repo: https://github.com/bumuellp/cabumtain-hook
-    rev: v1.0.2
+    rev: v1.2.0
     hooks:
       - id: commit-msg
       - id: secret-scan
       - id: shell-lint
       - id: yaml-xml-lint
       - id: python-tests
-      - id: trivy-security
+      - id: trivy-config
+      - id: trivy-fs
