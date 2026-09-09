@@ -1,0 +1,67 @@
+---
+name: Reusable GitHub Pages Deploy
+
+'on':
+  workflow_call:
+    inputs:
+      dist-path:
+        description: Path to build artifacts directory
+        required: false
+        default: './dist'
+        type: string
+      build-command:
+        description: Shell command to build static site
+        required: false
+        default: 'npm run build'
+        type: string
+      node-version:
+        description: Node.js version
+        required: false
+        default: '22'
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Static Site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Site
+        run: ${{ inputs.build-command }}
+
+      - name: Upload GitHub Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ inputs.dist-path }}
+
+  deploy:
+    name: Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

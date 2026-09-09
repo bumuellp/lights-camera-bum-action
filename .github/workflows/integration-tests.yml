@@ -1,0 +1,123 @@
+---
+name: Integration Tests
+
+'on':
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-free-disk-space:
+    name: Test free-disk-space action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Run free-disk-space
+        uses: ./free-disk-space
+
+  test-cleanup-docker:
+    name: Test cleanup-docker action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Run cleanup-docker
+        uses: ./cleanup-docker
+
+  test-plan-image-builds:
+    name: Test plan-image-builds action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Run plan-image-builds
+        id: plan
+        uses: ./plan-image-builds
+        with:
+          images: '[{"name": "test-svc", "path": "images/test-svc"}]'
+          event-name: 'workflow_dispatch'
+          mode: 'all'
+
+      - name: Verify plan output
+        shell: bash
+        run: |
+          if [ -z "${{ steps.plan.outputs.build-plan }}" ]; then
+            echo "FAILED: build-plan output is empty!"
+            exit 1
+          fi
+          echo "PASS: Received valid build plan: ${{ steps.plan.outputs.build-plan }}"
+
+  test-bump-version:
+    name: Test bump-version action
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run bump-version
+        id: bump
+        uses: ./bump-version
+
+      - name: Verify bump output
+        shell: bash
+        run: |
+          if [ -z "${{ steps.bump.outputs.next-version }}" ]; then
+            echo "FAILED: next-version output is empty!"
+            exit 1
+          fi
+          echo "PASS: Next version: ${{ steps.bump.outputs.next-version }}"
+
+  test-sync-negative:
+    name: Test sync-rsync-path missing inputs validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Run sync-rsync-path with missing credentials (expect failure)
+        id: sync_step
+        continue-on-error: true
+        uses: ./sync-rsync-path
+        with:
+          remote-directory: '/tmp/test'
+          local-path: '.'
+          # Intentionally missing ssh-user and ssh-host
+
+      - name: Verify action failed validation
+        shell: bash
+        run: |
+          if [ "${{ steps.sync_step.outcome }}" != "failure" ]; then
+            echo "FAILED: Expected sync-rsync-path to fail when required SSH credentials are omitted!"
+            exit 1
+          fi
+          echo "PASS: Action correctly rejected invalid configuration."
+
+  test-ssh-negative:
+    name: Test run-authorized-ssh-script missing inputs validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Run run-authorized-ssh-script with missing host (expect failure)
+        id: ssh_step
+        continue-on-error: true
+        uses: ./run-authorized-ssh-script
+        with:
+          script: 'echo test'
+          # Intentionally missing ssh-user and ssh-host
+
+      - name: Verify action failed validation
+        shell: bash
+        run: |
+          if [ "${{ steps.ssh_step.outcome }}" != "failure" ]; then
+            echo "FAILED: Expected run-authorized-ssh-script to fail when required SSH credentials are omitted!"
+            exit 1
+          fi
+          echo "PASS: Action correctly rejected invalid configuration."

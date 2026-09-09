@@ -1,5 +1,5 @@
 ---
-name: lint
+name: CI
 
 'on':
   push:
@@ -8,12 +8,12 @@ name: lint
     branches: [main]
 
 jobs:
-  lint-and-validate:
-    name: Lint Hooks & Validate Manifest
+  pre-commit:
+    name: Pre-Commit & Automated Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
 
-      - name: Run Pre-Commit via Shared Action
-        uses: bumuellp/lights-camera-bum-action/lint@main
+      - name: Run Local Pre-Commit Action
+        uses: ./pre-commit

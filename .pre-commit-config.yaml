@@ -9,6 +9,12 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
 
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.31.2
+    hooks:
+      - id: check-github-actions
+      - id: check-github-workflows
+
   - repo: https://github.com/bumuellp/cabumtain-hook
     rev: v1.0.2
     hooks:

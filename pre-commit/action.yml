@@ -1,6 +1,6 @@
 ---
-name: Pre-Commit Lint and Validate
-description: Run pre-commit hooks with caching across all files.
+name: Pre-Commit Validation & Testing
+description: Run containerized pre-commit hooks, linters, and tests across all files using ghcr.io/bumuellp/lint-tools.
 inputs:
   extra-args:
     description: Additional arguments to pass to pre-commit run.

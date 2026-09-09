@@ -17,6 +17,7 @@ ENV/
 # Tooling and caches
 .cache/
 .pre-commit/
+.agent/
 
 # OS and Editor files
 .DS_Store
