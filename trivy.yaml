@@ -12,6 +12,7 @@ scanners:
   - vuln
   - misconfig
   - secret
+  - license
 
 # Default exit code (0 = non-blocking report)
 exit-code: 0
