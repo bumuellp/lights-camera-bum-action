@@ -4,7 +4,6 @@
 import json
 import os
 import subprocess
-import sys
 
 
 def parse_image_definitions(raw_images: str) -> list:
@@ -15,20 +14,26 @@ def parse_image_definitions(raw_images: str) -> list:
         images = []
         for item in parsed:
             if isinstance(item, str):
-                images.append({
-                    "name": item,
-                    "path": f"images/{item}",
-                    "dockerfile": f"images/{item}/Dockerfile",
-                })
+                images.append(
+                    {
+                        "name": item,
+                        "path": f"images/{item}",
+                        "dockerfile": f"images/{item}/Dockerfile",
+                    }
+                )
             elif isinstance(item, dict):
                 path = item.get("path", "").rstrip("/")
                 name = item.get("name") or os.path.basename(path)
-                dockerfile = item.get("dockerfile") or (f"{path}/Dockerfile" if path else "Dockerfile")
-                images.append({
-                    "name": name,
-                    "path": path,
-                    "dockerfile": dockerfile,
-                })
+                dockerfile = item.get("dockerfile") or (
+                    f"{path}/Dockerfile" if path else "Dockerfile"
+                )
+                images.append(
+                    {
+                        "name": name,
+                        "path": path,
+                        "dockerfile": dockerfile,
+                    }
+                )
         return images
 
     # Auto-discovery mode
@@ -37,11 +42,13 @@ def parse_image_definitions(raw_images: str) -> list:
         for entry in sorted(os.listdir("images")):
             dockerfile_path = os.path.join("images", entry, "Dockerfile")
             if os.path.isfile(dockerfile_path):
-                discovered.append({
-                    "name": entry,
-                    "path": os.path.join("images", entry),
-                    "dockerfile": dockerfile_path,
-                })
+                discovered.append(
+                    {
+                        "name": entry,
+                        "path": os.path.join("images", entry),
+                        "dockerfile": dockerfile_path,
+                    }
+                )
     return discovered
 
 
@@ -116,11 +123,13 @@ def plan_builds(
     include = []
     for img in images:
         if should_build_image(img, target, changed_files):
-            include.append({
-                "image-name": img["name"],
-                "context": img["path"] or ".",
-                "dockerfile": img["dockerfile"],
-            })
+            include.append(
+                {
+                    "image-name": img["name"],
+                    "context": img["path"] or ".",
+                    "dockerfile": img["dockerfile"],
+                }
+            )
 
     matrix = {"include": include}
     should_build = len(include) > 0

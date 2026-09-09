@@ -1,9 +1,9 @@
 """Unit tests for free-disk-space composite action failure modes and edge cases."""
 
 import os
-from pathlib import Path
 import subprocess
-import pytest
+from pathlib import Path
+
 import yaml
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
@@ -36,7 +36,7 @@ exit 0
 """)
     mock_df.chmod(0o755)
 
-    with open(ACTION_FILE, "r", encoding="utf-8") as f:
+    with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     # Point rm targets to non-existent temp paths to test rm -rf behavior
@@ -48,8 +48,12 @@ exit 0
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
     }
 
-    res = subprocess.run(["bash", "-c", test_script], capture_output=True, text=True, check=False, env=env)
-    assert res.returncode == 0, f"rm -rf on absent directories must succeed idempotently: {res.stderr}"
+    res = subprocess.run(
+        ["bash", "-c", test_script], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0, (
+        f"rm -rf on absent directories must succeed idempotently: {res.stderr}"
+    )
 
 
 def test_free_disk_space_propagates_deletion_failure(tmp_path):
@@ -71,7 +75,7 @@ exit 1
 """)
     mock_rm.chmod(0o755)
 
-    with open(ACTION_FILE, "r", encoding="utf-8") as f:
+    with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     rm_step = data["runs"]["steps"][1]["run"]
@@ -79,6 +83,8 @@ exit 1
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
     }
 
-    res = subprocess.run(["bash", "-c", rm_step], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", "-c", rm_step], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode != 0, "Fatal deletion error must not be silently masked"
     assert "Read-only file system" in res.stderr

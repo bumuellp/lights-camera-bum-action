@@ -82,9 +82,15 @@ class GitHubPackagesClient:
                         page += 1
                         continue
                     except Exception as fallback_e:
-                        print(f"[{package_name}] Warning: Failed to fetch versions via fallback: {fallback_e}", file=sys.stderr)
+                        print(
+                            f"[{package_name}] Warning: Failed to fetch versions via fallback: {fallback_e}",
+                            file=sys.stderr,
+                        )
                         break
-                print(f"[{package_name}] Warning: Failed to fetch versions (HTTP {e.status}): {e.data}", file=sys.stderr)
+                print(
+                    f"[{package_name}] Warning: Failed to fetch versions (HTTP {e.status}): {e.data}",
+                    file=sys.stderr,
+                )
                 break
             except Exception as e:
                 print(f"[{package_name}] Error fetching versions: {e}", file=sys.stderr)
@@ -101,7 +107,7 @@ class GitHubPackagesClient:
         token_url = f"{self.registry_url}/token?scope=repository:{owner}/{package_name}:pull"
         headers = {"User-Agent": "lights-camera-bum-action/cleanup-ghcr-packages"}
         if self.token:
-            auth_bytes = f"{self.owner or 'token'}:{self.token}".encode("utf-8")
+            auth_bytes = f"{self.owner or 'token'}:{self.token}".encode()
             headers["Authorization"] = f"Basic {base64.b64encode(auth_bytes).decode('utf-8')}"
 
         req = urllib.request.Request(token_url, headers=headers)

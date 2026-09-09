@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from enum import Enum
 import json
 import os
 import re
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from typing import Any
 
 
-class RetentionAction(str, Enum):
+class RetentionAction(StrEnum):
     """Categorization of retention decision for a package version."""
 
     KEEP_SEMVER = "KEEP-SEMVER"
@@ -85,7 +85,7 @@ class RetentionPolicy:
     ):
         self.keep_sha_count = keep_sha_count
         self.untagged_retention_days = untagged_retention_days
-        self._now = now or datetime.now(timezone.utc)
+        self._now = now or datetime.now(UTC)
 
     def evaluate(
         self,
@@ -115,65 +115,79 @@ class RetentionPolicy:
 
             # 1. ALWAYS PRESERVE SemVer Release checkpoints (e.g. v1.0.0)
             if is_semver_release(tags):
-                decisions.append((
-                    v,
-                    RetentionAction.KEEP_SEMVER,
-                    f"SemVer release tags: {tags}",
-                ))
+                decisions.append(
+                    (
+                        v,
+                        RetentionAction.KEEP_SEMVER,
+                        f"SemVer release tags: {tags}",
+                    )
+                )
                 continue
 
             # 2. ALWAYS PRESERVE Active Floating tags (:latest, :v1)
             if is_active_floating(tags):
-                decisions.append((
-                    v,
-                    RetentionAction.KEEP_ACTIVE,
-                    f"Active floating tags: {tags}",
-                ))
+                decisions.append(
+                    (
+                        v,
+                        RetentionAction.KEEP_ACTIVE,
+                        f"Active floating tags: {tags}",
+                    )
+                )
                 continue
 
             # 3. Retain the most recent N commit SHA versions
             if tags and kept_sha_count < self.keep_sha_count:
                 kept_sha_count += 1
-                decisions.append((
-                    v,
-                    RetentionAction.KEEP_RECENT_SHA,
-                    f"Recent commit SHA tag ({kept_sha_count}/{self.keep_sha_count}): {tags}",
-                ))
+                decisions.append(
+                    (
+                        v,
+                        RetentionAction.KEEP_RECENT_SHA,
+                        f"Recent commit SHA tag ({kept_sha_count}/{self.keep_sha_count}): {tags}",
+                    )
+                )
                 continue
 
             # 4. Handle untagged versions (tags == [])
             if not tags:
                 # Layer 1: Child manifest referenced by an active tagged index
                 if digest_name and digest_name in referenced_digests:
-                    decisions.append((
-                        v,
-                        RetentionAction.KEEP_CHILD_MANIFEST,
-                        f"Active child manifest referenced by index: {digest_name}",
-                    ))
+                    decisions.append(
+                        (
+                            v,
+                            RetentionAction.KEEP_CHILD_MANIFEST,
+                            f"Active child manifest referenced by index: {digest_name}",
+                        )
+                    )
                     continue
 
                 # Layer 2: Age-based grace period (default 7 days)
                 if created_at and created_at >= grace_cutoff:
-                    decisions.append((
-                        v,
-                        RetentionAction.KEEP_RECENT_UNTAGGED,
-                        f"Recent untagged version within {self.untagged_retention_days}d grace period ({created_at_str})",
-                    ))
+                    decisions.append(
+                        (
+                            v,
+                            RetentionAction.KEEP_RECENT_UNTAGGED,
+                            f"Recent untagged version within {self.untagged_retention_days}d grace period ({created_at_str})",
+                        )
+                    )
                     continue
 
                 # Expired and unreferenced untagged version
-                decisions.append((
-                    v,
-                    RetentionAction.DELETE,
-                    f"Orphaned untagged version older than {self.untagged_retention_days} days",
-                ))
+                decisions.append(
+                    (
+                        v,
+                        RetentionAction.DELETE,
+                        f"Orphaned untagged version older than {self.untagged_retention_days} days",
+                    )
+                )
                 continue
 
             # 5. Older SHA version beyond keep_sha_count
-            decisions.append((
-                v,
-                RetentionAction.DELETE,
-                f"Older commit SHA tag exceeding retention count ({self.keep_sha_count}): {tags}",
-            ))
+            decisions.append(
+                (
+                    v,
+                    RetentionAction.DELETE,
+                    f"Older commit SHA tag exceeding retention count ({self.keep_sha_count}): {tags}",
+                )
+            )
 
         return decisions

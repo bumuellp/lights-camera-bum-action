@@ -1,9 +1,8 @@
 """Comprehensive unit tests for cleanup-ghcr-packages."""
 
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
 import sys
-import pytest
+from datetime import UTC, datetime
+from pathlib import Path
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ACTION_ROOT / "cleanup-ghcr-packages"))
@@ -57,7 +56,7 @@ def test_is_active_floating():
 
 
 def test_retention_policy_rules():
-    fixed_now = datetime(2026, 9, 8, 12, 0, 0, tzinfo=timezone.utc)
+    fixed_now = datetime(2026, 9, 8, 12, 0, 0, tzinfo=UTC)
     policy = RetentionPolicy(
         keep_sha_count=2,
         untagged_retention_days=7,
@@ -158,7 +157,7 @@ class DummyClient:
 
 
 def test_cleanup_package_dry_run_vs_live():
-    fixed_now = datetime(2026, 9, 8, 12, 0, 0, tzinfo=timezone.utc)
+    fixed_now = datetime(2026, 9, 8, 12, 0, 0, tzinfo=UTC)
     policy = RetentionPolicy(
         keep_sha_count=1,
         untagged_retention_days=7,

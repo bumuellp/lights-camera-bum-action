@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Calculate next Semantic Version from Conventional Commits since last release tag."""
 
-import json
 import os
 import re
 import subprocess
-import sys
 
 
 def parse_semver(tag: str) -> tuple[int, int, int] | None:
@@ -129,7 +127,9 @@ def main() -> None:
         bump_type = determine_bump_type(commits)
 
     has_changes = len(commits) > 0 or latest_tag is None
-    next_tag, major_tag, minor_tag = calculate_next_version(latest_tag, bump_type if has_changes else "none")
+    next_tag, major_tag, minor_tag = calculate_next_version(
+        latest_tag, bump_type if has_changes else "none"
+    )
 
     print(f"Latest Tag: {latest_tag or 'None (initial)'}")
     print(f"Commits since tag: {len(commits)}")

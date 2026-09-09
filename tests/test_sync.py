@@ -1,9 +1,8 @@
 """Unit tests for sync-rsync-path/sync.sh."""
 
 import os
-from pathlib import Path
 import subprocess
-import pytest
+from pathlib import Path
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
 SYNC_SH = ACTION_ROOT / "sync-rsync-path" / "sync.sh"
@@ -11,7 +10,9 @@ SYNC_SH = ACTION_ROOT / "sync-rsync-path" / "sync.sh"
 
 def test_sync_sh_missing_required_env_vars():
     # Calling without SSH_USER or SSH_HOST must fail immediately
-    res = subprocess.run(["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env={})
+    res = subprocess.run(
+        ["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env={}
+    )
     assert res.returncode != 0
     assert "SSH_USER is required" in res.stderr or "is required" in res.stderr
 
@@ -22,11 +23,15 @@ def test_sync_sh_execution_with_mock_ssh_and_rsync(tmp_path):
     mock_bin.mkdir()
 
     mock_ssh = mock_bin / "ssh"
-    mock_ssh.write_text("#!/bin/sh\necho \"MOCK_SSH: $@\" >> " + str(tmp_path / "ssh.log") + "\nexit 0\n")
+    mock_ssh.write_text(
+        '#!/bin/sh\necho "MOCK_SSH: $@" >> ' + str(tmp_path / "ssh.log") + "\nexit 0\n"
+    )
     mock_ssh.chmod(0o755)
 
     mock_rsync = mock_bin / "rsync"
-    mock_rsync.write_text("#!/bin/sh\necho \"MOCK_RSYNC: $@\" >> " + str(tmp_path / "rsync.log") + "\nexit 0\n")
+    mock_rsync.write_text(
+        '#!/bin/sh\necho "MOCK_RSYNC: $@" >> ' + str(tmp_path / "rsync.log") + "\nexit 0\n"
+    )
     mock_rsync.chmod(0o755)
 
     # Local path to sync
@@ -44,7 +49,9 @@ def test_sync_sh_execution_with_mock_ssh_and_rsync(tmp_path):
         "SSH_PORT": "2222",
     }
 
-    res = subprocess.run(["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode == 0
 
     ssh_log = (tmp_path / "ssh.log").read_text()

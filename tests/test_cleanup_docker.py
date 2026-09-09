@@ -1,9 +1,9 @@
 """Unit tests for cleanup-docker composite action conditions and failure modes."""
 
 import os
-from pathlib import Path
 import subprocess
-import pytest
+from pathlib import Path
+
 import yaml
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
@@ -16,7 +16,7 @@ def test_cleanup_docker_action_exists():
 
 def test_cleanup_docker_step_conditions():
     """Verify that cleanup steps use the correct GitHub Actions execution conditions."""
-    with open(ACTION_FILE, "r", encoding="utf-8") as f:
+    with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     steps = data["runs"]["steps"]
@@ -46,7 +46,7 @@ exit 1
 """)
     mock_docker.chmod(0o755)
 
-    with open(ACTION_FILE, "r", encoding="utf-8") as f:
+    with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     down_command = data["runs"]["steps"][1]["run"]
@@ -54,6 +54,8 @@ exit 1
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
     }
 
-    res = subprocess.run(["bash", "-c", down_command], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", "-c", down_command], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode == 1, "Daemon connection failure must produce non-zero exit code"
     assert "Cannot connect to the Docker daemon" in res.stderr

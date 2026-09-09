@@ -1,8 +1,7 @@
 """Unit tests for build-ghcr-image/compute_tags.sh."""
 
-from pathlib import Path
 import subprocess
-import pytest
+from pathlib import Path
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
 COMPUTE_TAGS_SH = ACTION_ROOT / "build-ghcr-image" / "compute_tags.sh"
@@ -22,7 +21,9 @@ def test_compute_tags_default_latest_and_major():
 
 
 def test_compute_tags_with_sha():
-    res = run_compute_tags(registry="ghcr.io", owner="bumuellp", image="mcpo", sha="abc1234", extra="")
+    res = run_compute_tags(
+        registry="ghcr.io", owner="bumuellp", image="mcpo", sha="abc1234", extra=""
+    )
     assert res.returncode == 0
     tags = res.stdout.strip().splitlines()
     assert "ghcr.io/bumuellp/mcpo:latest" in tags

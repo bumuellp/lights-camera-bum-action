@@ -15,9 +15,14 @@ name: Reusable GitHub Pages Deploy
         default: 'npm run build'
         type: string
       node-version:
-        description: Node.js version
+        description: Explicit Node.js version (leave empty to use node-version-file)
         required: false
-        default: '22'
+        default: ''
+        type: string
+      node-version-file:
+        description: File containing Node version (.node-version, .nvmrc, package.json)
+        required: false
+        default: '.node-version'
         type: string
 
 permissions:
@@ -41,6 +46,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.node-version }}
+          node-version-file: ${{ inputs.node-version == '' && inputs.node-version-file || '' }}
           cache: npm
 
       - name: Install Dependencies

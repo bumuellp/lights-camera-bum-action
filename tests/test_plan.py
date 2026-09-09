@@ -1,23 +1,24 @@
 """Unit tests for plan.py in lights-camera-bum-action."""
 
 import json
-from pathlib import Path
 import sys
-import pytest
+from pathlib import Path
 
 # Ensure plan-image-builds directory is importable
 ACTION_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ACTION_ROOT / "plan-image-builds"))
 
-from plan import parse_image_definitions, should_build_image, plan_builds
+from plan import parse_image_definitions, plan_builds, should_build_image
 
 
 def test_parse_image_definitions_explicit_json():
-    raw_images = json.dumps([
-        {"name": "custom-name", "path": "src/app", "dockerfile": "src/app/custom.dockerfile"},
-        {"path": "images/simple-svc"},
-        "string-shortcut",
-    ])
+    raw_images = json.dumps(
+        [
+            {"name": "custom-name", "path": "src/app", "dockerfile": "src/app/custom.dockerfile"},
+            {"path": "images/simple-svc"},
+            "string-shortcut",
+        ]
+    )
     images = parse_image_definitions(raw_images)
     assert len(images) == 3
     assert images[0] == {
@@ -59,9 +60,17 @@ def test_should_build_image_explicit_targets():
 
 
 def test_should_build_image_multi_target_selection():
-    img1 = {"name": "lint-tools", "path": "images/lint-tools", "dockerfile": "images/lint-tools/Dockerfile"}
+    img1 = {
+        "name": "lint-tools",
+        "path": "images/lint-tools",
+        "dockerfile": "images/lint-tools/Dockerfile",
+    }
     img2 = {"name": "mcpo", "path": "images/mcpo", "dockerfile": "images/mcpo/Dockerfile"}
-    img3 = {"name": "openclaw", "path": "images/openclaw", "dockerfile": "images/openclaw/Dockerfile"}
+    img3 = {
+        "name": "openclaw",
+        "path": "images/openclaw",
+        "dockerfile": "images/openclaw/Dockerfile",
+    }
 
     # Comma-separated
     target_str = "lint-tools, mcpo"
@@ -91,11 +100,13 @@ def test_should_build_image_auto_path_detection():
 
 
 def test_plan_builds_full_pipeline_multi_target():
-    raw_images = json.dumps([
-        {"name": "lint-tools", "path": "images/lint-tools"},
-        {"name": "mcpo", "path": "images/mcpo"},
-        {"name": "openclaw", "path": "images/openclaw"},
-    ])
+    raw_images = json.dumps(
+        [
+            {"name": "lint-tools", "path": "images/lint-tools"},
+            {"name": "mcpo", "path": "images/mcpo"},
+            {"name": "openclaw", "path": "images/openclaw"},
+        ]
+    )
     matrix, should_build = plan_builds(
         raw_images=raw_images,
         target="lint-tools, openclaw",
@@ -111,10 +122,12 @@ def test_plan_builds_full_pipeline_multi_target():
 
 
 def test_plan_builds_empty_selection_no_op():
-    raw_images = json.dumps([
-        {"name": "lint-tools", "path": "images/lint-tools"},
-        {"name": "mcpo", "path": "images/mcpo"},
-    ])
+    raw_images = json.dumps(
+        [
+            {"name": "lint-tools", "path": "images/lint-tools"},
+            {"name": "mcpo", "path": "images/mcpo"},
+        ]
+    )
     matrix, should_build = plan_builds(
         raw_images=raw_images,
         target="none",

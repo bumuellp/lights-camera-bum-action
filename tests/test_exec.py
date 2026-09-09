@@ -1,16 +1,17 @@
 """Unit tests for run-authorized-ssh-script/exec.sh."""
 
 import os
-from pathlib import Path
 import subprocess
-import pytest
+from pathlib import Path
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
 EXEC_SH = ACTION_ROOT / "run-authorized-ssh-script" / "exec.sh"
 
 
 def test_exec_sh_missing_required_env_vars():
-    res = subprocess.run(["bash", str(EXEC_SH)], capture_output=True, text=True, check=False, env={})
+    res = subprocess.run(
+        ["bash", str(EXEC_SH)], capture_output=True, text=True, check=False, env={}
+    )
     assert res.returncode != 0
     assert "SSH_USER is required" in res.stderr or "is required" in res.stderr
 
@@ -21,11 +22,17 @@ def test_exec_sh_execution_with_mock_ssh(tmp_path):
 
     mock_ssh = mock_bin / "ssh"
     # Read stdin payload and record args
-    mock_ssh.write_text("""#!/bin/sh
-cat - > """ + str(tmp_path / "stdin.log") + """
-echo "MOCK_SSH: $@" >> """ + str(tmp_path / "ssh.log") + """
+    mock_ssh.write_text(
+        """#!/bin/sh
+cat - > """
+        + str(tmp_path / "stdin.log")
+        + """
+echo "MOCK_SSH: $@" >> """
+        + str(tmp_path / "ssh.log")
+        + """
 exit 0
-""")
+"""
+    )
     mock_ssh.chmod(0o755)
 
     env = {
@@ -38,7 +45,9 @@ exit 0
         "SSH_PORT": "2200",
     }
 
-    res = subprocess.run(["bash", str(EXEC_SH)], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", str(EXEC_SH)], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode == 0
 
     ssh_log = (tmp_path / "ssh.log").read_text()

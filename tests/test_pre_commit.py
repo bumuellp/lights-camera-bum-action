@@ -1,9 +1,9 @@
 """Unit tests for pre-commit composite action failure modes and edge cases."""
 
 import os
-from pathlib import Path
 import subprocess
-import pytest
+from pathlib import Path
+
 import yaml
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
@@ -15,12 +15,11 @@ def test_pre_commit_action_exists():
 
 
 def get_resolved_script(workspace: Path, extra_args: str = "--all-files") -> str:
-    with open(ACTION_FILE, "r", encoding="utf-8") as f:
+    with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     run_script = data["runs"]["steps"][0]["run"]
-    return (
-        run_script.replace("${{ github.workspace }}", str(workspace))
-        .replace("${{ inputs.extra-args }}", extra_args)
+    return run_script.replace("${{ github.workspace }}", str(workspace)).replace(
+        "${{ inputs.extra-args }}", extra_args
     )
 
 
@@ -45,7 +44,9 @@ exit 1
         "HOME": str(tmp_path),
     }
 
-    res = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", "-c", script], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode == 1, "Failure exit code must be propagated, not swallowed"
     assert "pre-commit found errors" in res.stderr
 
@@ -72,7 +73,9 @@ exit 0
         "HOME": str(tmp_path),
     }
 
-    res = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", "-c", script], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode == 0, f"Script failed: {res.stderr}"
 
     logged = log_file.read_text()
@@ -102,7 +105,9 @@ exit 0
         "HOME": str(tmp_path),
     }
 
-    res = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False, env=env)
+    res = subprocess.run(
+        ["bash", "-c", script], capture_output=True, text=True, check=False, env=env
+    )
     assert res.returncode == 0
 
     logged = log_file.read_text()
@@ -111,7 +116,7 @@ exit 0
 
 def test_pre_commit_enforces_safe_directory_and_non_root_uid():
     """Action must set git safe.directory and run with current user's UID to prevent ownership errors."""
-    with open(ACTION_FILE, "r", encoding="utf-8") as f:
+    with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     run_script = data["runs"]["steps"][0]["run"]

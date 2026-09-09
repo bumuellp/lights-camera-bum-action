@@ -1,13 +1,12 @@
 """Unit tests for bump-version/bump.py."""
 
-from pathlib import Path
 import sys
-import pytest
+from pathlib import Path
 
 ACTION_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ACTION_ROOT / "bump-version"))
 
-from bump import parse_semver, determine_bump_type, calculate_next_version
+from bump import calculate_next_version, determine_bump_type, parse_semver
 
 
 def test_parse_semver_valid_and_invalid():

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import os
-import sys
 
 from github_client import GitHubPackagesClient
 from retention import (
@@ -49,7 +48,9 @@ def cleanup_package(
             referenced_digests.update(child_digests)
 
     if referenced_digests:
-        print(f"  [DISCOVERY] Identified {len(referenced_digests)} active child manifest digests protected from deletion.")
+        print(
+            f"  [DISCOVERY] Identified {len(referenced_digests)} active child manifest digests protected from deletion."
+        )
 
     # 2. Evaluate retention decisions
     decisions = policy.evaluate(versions, referenced_digests=referenced_digests)
@@ -79,7 +80,9 @@ def cleanup_package(
 
 def main() -> None:
     raw_packages = os.environ.get("INPUT_PACKAGE_NAMES", "auto")
-    owner = os.environ.get("INPUT_REPOSITORY_OWNER") or os.environ.get("GITHUB_REPOSITORY_OWNER", "")
+    owner = os.environ.get("INPUT_REPOSITORY_OWNER") or os.environ.get(
+        "GITHUB_REPOSITORY_OWNER", ""
+    )
     token = (
         os.environ.get("INPUT_TOKEN")
         or os.environ.get("GITHUB_TOKEN")
