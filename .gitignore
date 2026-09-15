@@ -18,6 +18,9 @@ ENV/
 .cache/
 .pre-commit/
 .agent/
+.agents/
+skills-lock.json
+.ruff_cache/
 
 # OS and Editor files
 .DS_Store
