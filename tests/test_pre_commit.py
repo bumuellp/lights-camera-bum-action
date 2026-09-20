@@ -14,13 +14,17 @@ def test_pre_commit_action_exists():
     assert ACTION_FILE.is_file(), "pre-commit/action.yml must exist"
 
 
-def get_resolved_script(workspace: Path, extra_args: str = "--all-files") -> str:
+def get_resolved_script(
+    workspace: Path, extra_args: str = "--all-files"
+) -> tuple[str, dict[str, str]]:
     with open(ACTION_FILE, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     run_script = data["runs"]["steps"][0]["run"]
-    return run_script.replace("${{ github.workspace }}", str(workspace)).replace(
-        "${{ inputs.extra-args }}", extra_args
-    )
+    env_vars = {
+        "WORKSPACE": str(workspace),
+        "EXTRA_ARGS": extra_args,
+    }
+    return run_script, env_vars
 
 
 def test_pre_commit_propagates_failure_exit_code(tmp_path):
@@ -38,10 +42,11 @@ exit 1
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
-    script = get_resolved_script(workspace)
+    script, script_env = get_resolved_script(workspace)
     env = {
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
         "HOME": str(tmp_path),
+        **script_env,
     }
 
     res = subprocess.run(
@@ -67,10 +72,11 @@ exit 0
     workspace_with_spaces = tmp_path / "path with spaces" / "my project"
     workspace_with_spaces.mkdir(parents=True)
 
-    script = get_resolved_script(workspace_with_spaces)
+    script, script_env = get_resolved_script(workspace_with_spaces)
     env = {
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
         "HOME": str(tmp_path),
+        **script_env,
     }
 
     res = subprocess.run(
@@ -99,10 +105,11 @@ exit 0
     workspace.mkdir()
 
     complex_args = "--hook-stage pre-push --all-files --verbose"
-    script = get_resolved_script(workspace, extra_args=complex_args)
+    script, script_env = get_resolved_script(workspace, extra_args=complex_args)
     env = {
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
         "HOME": str(tmp_path),
+        **script_env,
     }
 
     res = subprocess.run(

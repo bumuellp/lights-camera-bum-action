@@ -19,6 +19,16 @@ name: Reusable Deploy Images
         required: false
         type: boolean
         default: true
+      push:
+        description: Whether to push built images to the registry
+        required: false
+        type: boolean
+        default: true
+      smoke-test-script:
+        description: Relative path to smoke test script to execute against locally built image before push
+        required: false
+        type: string
+        default: ''
       extra-tags:
         description: Comma- or newline-separated extra tags (e.g. 'v1, v1.0.0')
         required: false
@@ -89,6 +99,18 @@ jobs:
           load: true
           registry: ${{ inputs.registry }}
 
+      - name: Run Container Smoke Test
+        if: ${{ inputs.smoke-test-script != '' }}
+        env:
+          SMOKE_TEST_SCRIPT: ${{ inputs.smoke-test-script }}
+          IMAGE_NAME: ${{ matrix.image-name }}
+          REGISTRY: ${{ inputs.registry }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          chmod +x "$SMOKE_TEST_SCRIPT"
+          "$SMOKE_TEST_SCRIPT" "$IMAGE_NAME" "${REGISTRY}/${REPO_OWNER}/${IMAGE_NAME}:${COMMIT_SHA}"
+
       - name: Cache Trivy Vulnerability DB
         if: ${{ inputs.scan-with-trivy }}
         uses: actions/cache@v6
@@ -110,6 +132,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Push Image to GHCR
+        if: ${{ inputs.push && github.event_name != 'pull_request' }}
         uses: bumuellp/lights-camera-bum-action/build-ghcr-image@v1
         with:
           context: ${{ matrix.context }}
@@ -128,7 +151,7 @@ jobs:
   cleanup:
     name: Cleanup Stale Packages
     needs: [plan, build-and-push]
-    if: always() && needs.build-and-push.result == 'success'
+    if: always() && needs.build-and-push.result == 'success' && inputs.push && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       packages: write

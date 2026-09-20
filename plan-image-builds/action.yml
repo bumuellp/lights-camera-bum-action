@@ -28,4 +28,5 @@ runs:
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_EVENT_BEFORE: ${{ github.event.before }}
         GITHUB_SHA: ${{ github.sha }}
-      run: python3 "${{ github.action_path }}/plan.py"
+        ACTION_PATH: ${{ github.action_path }}
+      run: python3 "$ACTION_PATH/plan.py"

@@ -2,23 +2,16 @@
 # Sync path via rsync over SSH
 set -euo pipefail
 
-SSH_USER="${SSH_USER:?SSH_USER is required}"
-SSH_HOST="${SSH_HOST:?SSH_HOST is required}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common/ssh-common.sh
+source "${SCRIPT_DIR}/../common/ssh-common.sh"
+
+setup_ssh_env
+
 REMOTE_DIRECTORY="${REMOTE_DIRECTORY:?REMOTE_DIRECTORY is required}"
 LOCAL_PATH="${LOCAL_PATH:?LOCAL_PATH is required}"
 EXCLUDE_FROM="${EXCLUDE_FROM:-}"
 RSYNC_ARGS="${RSYNC_ARGS:--avz --delete}"
-SSH_KEY_PATH="${SSH_KEY_PATH:-/runner_ssh_key}"
-SSH_PORT="${SSH_PORT:-}"
-
-remote="${SSH_USER}@${SSH_HOST}"
-ssh_args=(-i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no)
-ssh_transport="ssh -i $SSH_KEY_PATH -o StrictHostKeyChecking=no"
-
-if [ -n "$SSH_PORT" ]; then
-	ssh_args+=(-p "$SSH_PORT")
-	ssh_transport="$ssh_transport -p $SSH_PORT"
-fi
 
 ssh "${ssh_args[@]}" "$remote" -- "mkdir -p '$REMOTE_DIRECTORY'"
 

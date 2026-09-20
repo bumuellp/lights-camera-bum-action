@@ -34,4 +34,5 @@ runs:
         SSH_KEY_PATH: ${{ inputs.ssh-key-path }}
         ENV_PAYLOAD: ${{ inputs.env-payload }}
         REMOTE_COMMAND: ${{ inputs.remote-command }}
-      run: bash "${{ github.action_path }}/exec.sh"
+        ACTION_PATH: ${{ github.action_path }}
+      run: bash "$ACTION_PATH/exec.sh"

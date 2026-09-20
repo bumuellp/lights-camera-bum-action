@@ -39,10 +39,11 @@ runs:
         INPUT_KEEP_SHA_COUNT: ${{ inputs.keep-sha-count }}
         INPUT_UNTAGGED_RETENTION_DAYS: ${{ inputs.untagged-retention-days }}
         INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         if command -v uv >/dev/null 2>&1; then
-          uv run --with pygithub python3 "${{ github.action_path }}/cleanup.py"
+          uv run --with pygithub python3 "$ACTION_PATH/cleanup.py"
         else
           pip install --quiet --break-system-packages pygithub 2>/dev/null || pip install --quiet pygithub
-          python3 "${{ github.action_path }}/cleanup.py"
+          python3 "$ACTION_PATH/cleanup.py"
         fi

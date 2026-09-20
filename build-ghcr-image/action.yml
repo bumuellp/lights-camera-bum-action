@@ -55,13 +55,20 @@ runs:
     - name: Compute Image Tags
       id: meta
       shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        REGISTRY: ${{ inputs.registry }}
+        REPO_OWNER: ${{ inputs.repository-owner }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+        SHA: ${{ inputs.sha }}
+        EXTRA_TAGS: ${{ inputs.extra-tags }}
       run: |
-        TAGS="$("${{ github.action_path }}/compute_tags.sh" \
-          "${{ inputs.registry }}" \
-          "${{ inputs.repository-owner }}" \
-          "${{ inputs.image-name }}" \
-          "${{ inputs.sha }}" \
-          "${{ inputs.extra-tags }}")"
+        TAGS="$("$ACTION_PATH/compute_tags.sh" \
+          "$REGISTRY" \
+          "$REPO_OWNER" \
+          "$IMAGE_NAME" \
+          "$SHA" \
+          "$EXTRA_TAGS")"
         {
           echo "tags<<EOF"
           echo "$TAGS"
