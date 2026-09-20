@@ -12,11 +12,10 @@ runs:
     - name: Run Lint Tools Container
       shell: bash
       env:
-        WORKSPACE: ${{ github.workspace }}
         EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         docker run --rm \
-          -v "$WORKSPACE:/workspace" \
+          -v "$GITHUB_WORKSPACE:/workspace" \
           -w /workspace \
           -u "$(id -u):$(id -g)" \
           -e HOME=/tmp \

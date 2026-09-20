@@ -21,7 +21,7 @@ def get_resolved_script(
         data = yaml.safe_load(f)
     run_script = data["runs"]["steps"][0]["run"]
     env_vars = {
-        "WORKSPACE": str(workspace),
+        "GITHUB_WORKSPACE": str(workspace),
         "EXTRA_ARGS": extra_args,
     }
     return run_script, env_vars

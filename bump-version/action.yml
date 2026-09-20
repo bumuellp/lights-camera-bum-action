@@ -31,6 +31,5 @@ runs:
     - id: bump
       shell: bash
       env:
-        ACTION_PATH: ${{ github.action_path }}
         INPUT_FORCE_BUMP: ${{ inputs.force-bump }}
-      run: python3 "$ACTION_PATH/bump.py"
+      run: python3 "$GITHUB_ACTION_PATH/bump.py"

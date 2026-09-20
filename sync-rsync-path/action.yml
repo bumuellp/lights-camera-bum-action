@@ -43,5 +43,4 @@ runs:
         REMOTE_DIRECTORY: ${{ inputs.remote-directory }}
         EXCLUDE_FROM: ${{ inputs.exclude-from }}
         RSYNC_ARGS: ${{ inputs.rsync-args }}
-        ACTION_PATH: ${{ github.action_path }}
-      run: bash "$ACTION_PATH/sync.sh"
+      run: bash "$GITHUB_ACTION_PATH/sync.sh"

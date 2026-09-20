@@ -56,14 +56,13 @@ runs:
       id: meta
       shell: bash
       env:
-        ACTION_PATH: ${{ github.action_path }}
         REGISTRY: ${{ inputs.registry }}
         REPO_OWNER: ${{ inputs.repository-owner }}
         IMAGE_NAME: ${{ inputs.image-name }}
         SHA: ${{ inputs.sha }}
         EXTRA_TAGS: ${{ inputs.extra-tags }}
       run: |
-        TAGS="$("$ACTION_PATH/compute_tags.sh" \
+        TAGS="$("$GITHUB_ACTION_PATH/compute_tags.sh" \
           "$REGISTRY" \
           "$REPO_OWNER" \
           "$IMAGE_NAME" \

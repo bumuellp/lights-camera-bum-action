@@ -52,6 +52,7 @@ jobs:
   plan:
     name: Plan Image Builds
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       should-build: ${{ steps.plan.outputs.should-build }}
@@ -73,6 +74,7 @@ jobs:
     needs: plan
     if: ${{ needs.plan.outputs.should-build == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
@@ -105,11 +107,9 @@ jobs:
           SMOKE_TEST_SCRIPT: ${{ inputs.smoke-test-script }}
           IMAGE_NAME: ${{ matrix.image-name }}
           REGISTRY: ${{ inputs.registry }}
-          REPO_OWNER: ${{ github.repository_owner }}
-          COMMIT_SHA: ${{ github.sha }}
         run: |
           chmod +x "$SMOKE_TEST_SCRIPT"
-          "$SMOKE_TEST_SCRIPT" "$IMAGE_NAME" "${REGISTRY}/${REPO_OWNER}/${IMAGE_NAME}:${COMMIT_SHA}"
+          "$SMOKE_TEST_SCRIPT" "$IMAGE_NAME" "${REGISTRY}/${GITHUB_REPOSITORY_OWNER}/${IMAGE_NAME}:${GITHUB_SHA}"
 
       - name: Cache Trivy Vulnerability DB
         if: ${{ inputs.scan-with-trivy }}
@@ -153,6 +153,7 @@ jobs:
     needs: [plan, build-and-push]
     if: always() && needs.build-and-push.result == 'success' && inputs.push && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       packages: write
     steps:
