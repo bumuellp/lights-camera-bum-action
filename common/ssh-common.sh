@@ -13,7 +13,7 @@ setup_ssh_env() {
 
 	export remote="${SSH_USER}@${SSH_HOST}"
 	ssh_args=(-i "$SSH_KEY_PATH" -o StrictHostKeyChecking=accept-new)
-	ssh_transport="ssh -i $SSH_KEY_PATH -o StrictHostKeyChecking=accept-new"
+	ssh_transport="ssh -i '$SSH_KEY_PATH' -o StrictHostKeyChecking=accept-new"
 
 	if [ -n "$SSH_PORT" ]; then
 		ssh_args+=(-p "$SSH_PORT")
