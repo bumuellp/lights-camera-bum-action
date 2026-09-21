@@ -19,6 +19,11 @@ name: Reusable Deploy Images
         required: false
         type: boolean
         default: true
+      compliance:
+        description: Compliance benchmark to evaluate with Trivy (e.g. docker-cis-1.6.0)
+        required: false
+        type: string
+        default: ''
       push:
         description: Whether to push built images to the registry
         required: false
@@ -127,6 +132,17 @@ jobs:
           scan-type: image
           image-ref: '${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
           trivy-config: trivy.yaml
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Scan Built Image for CIS Benchmark Compliance
+        if: ${{ inputs.scan-with-trivy && inputs.compliance != '' }}
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: '${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
+          compliance: ${{ inputs.compliance }}
           format: table
           exit-code: '1'
           ignore-unfixed: true
