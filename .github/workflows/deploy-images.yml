@@ -138,14 +138,14 @@ jobs:
 
       - name: Scan Built Image for CIS Benchmark Compliance
         if: ${{ inputs.scan-with-trivy && inputs.compliance != '' }}
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: image
-          image-ref: '${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
-          compliance: ${{ inputs.compliance }}
-          format: table
-          exit-code: '1'
-          ignore-unfixed: true
+        run: |
+          trivy image \
+            --compliance "${{ inputs.compliance }}" \
+            --format table \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            "${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}"
 
       - name: Push Image to GHCR
         if: ${{ inputs.push && github.event_name != 'pull_request' }}
