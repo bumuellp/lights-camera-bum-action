@@ -139,13 +139,23 @@ jobs:
       - name: Scan Built Image for CIS Benchmark Compliance
         if: ${{ inputs.scan-with-trivy && inputs.compliance != '' }}
         run: |
-          trivy image \
+          IMAGE_REF="${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}"
+          if ! trivy image \
             --compliance "${{ inputs.compliance }}" \
             --format table \
             --exit-code 1 \
             --severity HIGH,CRITICAL \
             --ignore-unfixed \
-            "${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}"
+            "$IMAGE_REF"; then
+            echo "::error::Trivy compliance scan failed! Dumping detailed misconfigurations and vulnerabilities..."
+            trivy image \
+              --image-config-scanners misconfig \
+              --scanners vuln,misconfig \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              "$IMAGE_REF" || true
+            exit 1
+          fi
 
       - name: Push Image to GHCR
         if: ${{ inputs.push && github.event_name != 'pull_request' }}
