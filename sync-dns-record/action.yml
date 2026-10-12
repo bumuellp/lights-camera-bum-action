@@ -1,0 +1,48 @@
+---
+name: Sync DNS Record
+description: Provider-agnostic DNS record manager supporting deSEC.io and IONOS Domain APIs.
+inputs:
+  provider:
+    description: DNS provider ('desec' or 'ionos').
+    required: false
+    default: 'desec'
+  token:
+    description: API authentication token (deSEC Token or IONOS API Key).
+    required: true
+  domain:
+    description: Registered zone / domain name (e.g. example.dedyn.io or example.com).
+    required: true
+  subname:
+    description: Subdomain label (e.g. 'mc' for mc.example.com, or '' / '@' for apex).
+    required: false
+    default: ''
+  type:
+    description: DNS record type (e.g. A, AAAA, TXT, CNAME).
+    required: false
+    default: 'A'
+  records:
+    description: Space-separated, comma-separated, or single record values (e.g. '1.2.3.4').
+    required: false
+    default: ''
+  ttl:
+    description: DNS record Time To Live in seconds.
+    required: false
+    default: '60'
+  action:
+    description: Action to perform ('sync' or 'delete').
+    required: false
+    default: 'sync'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        DNS_PROVIDER: ${{ inputs.provider }}
+        DNS_TOKEN: ${{ inputs.token }}
+        DNS_DOMAIN: ${{ inputs.domain }}
+        DNS_SUBNAME: ${{ inputs.subname }}
+        DNS_TYPE: ${{ inputs.type }}
+        DNS_RECORDS: ${{ inputs.records }}
+        DNS_TTL: ${{ inputs.ttl }}
+        DNS_ACTION: ${{ inputs.action }}
+      run: bash "$GITHUB_ACTION_PATH/sync.sh"
