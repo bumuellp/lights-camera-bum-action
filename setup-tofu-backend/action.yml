@@ -1,0 +1,58 @@
+---
+name: Setup OpenTofu Backend
+description: Initialize OpenTofu with an S3-compatible remote backend (e.g. Hetzner Object Storage) and mask credentials.
+inputs:
+  working-directory:
+    description: Working directory containing OpenTofu configuration files.
+    required: false
+    default: '.'
+  bucket:
+    description: S3 bucket name for state storage.
+    required: true
+  endpoint:
+    description: S3 endpoint URL (e.g. https://fsn1.your-objectstorage.com).
+    required: true
+  key:
+    description: Path/key to state file within bucket (e.g. project/terraform.tfstate).
+    required: false
+    default: 'terraform.tfstate'
+  region:
+    description: S3 region (defaults to us-east-1 for compatible non-AWS stores).
+    required: false
+    default: 'us-east-1'
+  access-key:
+    description: S3 Access Key ID (e.g. Hetzner S3 access key).
+    required: true
+  secret-key:
+    description: S3 Secret Access Key (e.g. Hetzner S3 secret key).
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Initialize OpenTofu Remote Backend
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        S3_BUCKET: ${{ inputs.bucket }}
+        S3_ENDPOINT: ${{ inputs.endpoint }}
+        S3_KEY: ${{ inputs.key }}
+        S3_REGION: ${{ inputs.region }}
+        S3_ACCESS_KEY: ${{ inputs.access-key }}
+        S3_SECRET_KEY: ${{ inputs.secret-key }}
+      run: |
+        echo "::add-mask::$S3_ACCESS_KEY"
+        echo "::add-mask::$S3_SECRET_KEY"
+
+        export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY"
+        export AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
+
+        echo "Initializing OpenTofu with remote S3 backend..."
+        echo "Bucket:   $S3_BUCKET"
+        echo "Endpoint: $S3_ENDPOINT"
+        echo "Key:      $S3_KEY"
+
+        tofu init \
+          -backend-config="bucket=$S3_BUCKET" \
+          -backend-config="endpoint=$S3_ENDPOINT" \
+          -backend-config="key=$S3_KEY" \
+          -backend-config="region=$S3_REGION"
