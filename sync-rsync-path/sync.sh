@@ -3,7 +3,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common/ssh-common.sh
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=../common/ssh-common.sh
 source "${SCRIPT_DIR}/../common/ssh-common.sh"
 
 setup_ssh_env

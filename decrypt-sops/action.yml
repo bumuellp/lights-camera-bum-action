@@ -1,0 +1,41 @@
+---
+name: Decrypt SOPS Secrets
+description: Decrypt SOPS-encrypted files using an Age private key with automatic tool detection and fallback handling.
+inputs:
+  age-key:
+    description: Age private secret key (e.g. AGE-SECRET-KEY-1...).
+    required: false
+    default: ''
+  file:
+    description: Path to the encrypted file.
+    required: false
+    default: 'config/secrets.enc.yaml'
+  output:
+    description: Target path for the decrypted plaintext file.
+    required: false
+    default: 'config/secrets.yaml'
+  mode:
+    description: File permission bits for the decrypted file.
+    required: false
+    default: '0600'
+  sops-version:
+    description: Version of SOPS to install if not present on runner.
+    required: false
+    default: '3.9.4'
+outputs:
+  decrypted:
+    description: Boolean indicating whether the file was successfully decrypted ('true' or 'false').
+    value: ${{ steps.decrypt.outputs.decrypted }}
+runs:
+  using: composite
+  steps:
+    - name: Decrypt Secret File
+      id: decrypt
+      shell: bash
+      env:
+        AGE_KEY: ${{ inputs.age-key }}
+        FILE_PATH: ${{ inputs.file }}
+        OUTPUT_PATH: ${{ inputs.output }}
+        FILE_MODE: ${{ inputs.mode }}
+        SOPS_VERSION: ${{ inputs.sops-version }}
+      run: bash "$GITHUB_ACTION_PATH/decrypt.sh"

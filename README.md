@@ -18,6 +18,7 @@ Reusable, production-grade GitHub Actions suite for CI/CD pipelines, container p
 | **[`run-authorized-ssh-script`](run-authorized-ssh-script/)** | Execute deployment scripts on remote hosts over SSH with piped environment payloads. | [Read Docs](run-authorized-ssh-script/README.md) |
 | **[`sync-rsync-path`](sync-rsync-path/)** | Synchronize local files and artifacts to remote hosts over SSH using `rsync`. | [Read Docs](sync-rsync-path/README.md) |
 | **[`sync-dns-record`](sync-dns-record/)** | Provider-agnostic DNS manager for deSEC.io and IONOS Domain APIs. | [Read Docs](sync-dns-record/README.md) |
+| **[`decrypt-sops`](decrypt-sops/)** | Decrypt SOPS-encrypted secrets using an Age secret key with automatic binary resolution. | [Read Docs](decrypt-sops/README.md) |
 
 
 ---
