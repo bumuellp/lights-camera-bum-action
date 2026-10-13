@@ -33,8 +33,29 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
 
+      - name: Start test Docker Compose service
+        shell: bash
+        run: |
+          cat << 'EOF' > docker-compose.yml
+          services:
+            test-svc:
+              image: alpine:latest
+              command: ["sleep", "30"]
+          EOF
+          docker compose up -d
+
       - name: Run cleanup-docker
         uses: ./cleanup-docker
+
+      - name: Verify containers were cleaned up
+        shell: bash
+        run: |
+          if [ -n "$(docker compose ps -q 2>/dev/null)" ]; then
+            echo "FAILED: Containers are still running after cleanup-docker!"
+            exit 1
+          fi
+          echo "PASS: Docker Compose stack was cleanly torn down."
+          rm -f docker-compose.yml
 
   test-plan-image-builds:
     name: Test plan-image-builds action
