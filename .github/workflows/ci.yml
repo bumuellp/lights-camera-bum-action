@@ -2,6 +2,13 @@
 name: CI
 
 'on':
+  workflow_call:
+    inputs:
+      extra-args:
+        description: 'Additional arguments to pass to pre-commit run.'
+        required: false
+        type: string
+        default: '--all-files'
   push:
     branches: [main]
   pull_request:
@@ -16,12 +23,14 @@ concurrency:
 
 jobs:
   pre-commit:
-    name: Pre-Commit & Automated Tests
+    name: Pre-Commit & Quality Gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Run Local Pre-Commit Action
-        uses: ./pre-commit
+      - name: Run Pre-Commit via Shared Action
+        uses: bumuellp/lights-camera-bum-action/pre-commit@v1
+        with:
+          extra-args: ${{ inputs.extra-args || '--all-files' }}
