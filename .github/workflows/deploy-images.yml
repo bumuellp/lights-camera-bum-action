@@ -63,13 +63,13 @@ jobs:
       should-build: ${{ steps.plan.outputs.should-build }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Plan Builds
         id: plan
-        uses: bumuellp/lights-camera-bum-action/plan-image-builds@v1
+        uses: bumuellp/lights-camera-bum-action/plan-image-builds@a9266088302dbbda63132cc9705b14e436c957fd # v1
         with:
           images: ${{ inputs.images }}
           target: ${{ inputs.target }}
@@ -88,10 +88,10 @@ jobs:
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Build Image Locally
-        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@v1
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@a9266088302dbbda63132cc9705b14e436c957fd # v1
         with:
           context: ${{ matrix.context }}
           dockerfile: ${{ matrix.dockerfile }}
@@ -118,7 +118,7 @@ jobs:
 
       - name: Cache Trivy Vulnerability DB
         if: ${{ inputs.scan-with-trivy }}
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cache/trivy
           key: trivy-db-cache-${{ runner.os }}
@@ -127,7 +127,7 @@ jobs:
 
       - name: Scan Built Image with Trivy
         if: ${{ inputs.scan-with-trivy }}
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: '${{ inputs.registry }}/${{ github.repository_owner }}/${{ matrix.image-name }}:${{ github.sha }}'
@@ -159,7 +159,7 @@ jobs:
 
       - name: Push Image to GHCR
         if: ${{ inputs.push && github.event_name != 'pull_request' }}
-        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@v1
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@a9266088302dbbda63132cc9705b14e436c957fd # v1
         with:
           context: ${{ matrix.context }}
           dockerfile: ${{ matrix.dockerfile }}
@@ -184,7 +184,7 @@ jobs:
       packages: write
     steps:
       - name: Run Retention Cleanup
-        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@v1
+        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@a9266088302dbbda63132cc9705b14e436c957fd # v1
         with:
           package-names: ${{ inputs.images }}
           repository-owner: ${{ github.repository_owner }}
