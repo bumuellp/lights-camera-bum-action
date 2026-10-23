@@ -50,11 +50,13 @@ def test_decrypt_sh_missing_age_key(tmp_path):
     result = subprocess.run([str(DECRYPT_SH)], env=env, capture_output=True, text=True, check=False)
     assert result.returncode == 0
     assert "No SOPS_AGE_KEY provided" in result.stdout
-    assert "decrypted=false" in gh_output.read_text()
+    output_content = gh_output.read_text()
+    assert "decrypted=false" in output_content
+    assert "json={}" in output_content
 
 
 def test_decrypt_sh_missing_target_file(tmp_path):
-    # When file does not exist, it should gracefully skip and write decrypted=false
+    # When file does not exist, it should gracefully skip and write decrypted=false and json={}
     gh_output = tmp_path / "github_output"
     gh_output.touch()
 
@@ -69,4 +71,6 @@ def test_decrypt_sh_missing_target_file(tmp_path):
     result = subprocess.run([str(DECRYPT_SH)], env=env, capture_output=True, text=True, check=False)
     assert result.returncode == 0
     assert "does not exist" in result.stdout
-    assert "decrypted=false" in gh_output.read_text()
+    output_content = gh_output.read_text()
+    assert "decrypted=false" in output_content
+    assert "json={}" in output_content

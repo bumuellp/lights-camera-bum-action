@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Decrypt helper for SOPS using an Age secret key
-# Environment variables:
-#   AGE_KEY: Age private key (SOPS_AGE_KEY)
-#   FILE_PATH: Path to the encrypted file
-#   OUTPUT_PATH: Destination path for the decrypted file
-#   FILE_MODE: File permissions mode (e.g. 0600)
-#   SOPS_VERSION: SOPS binary release version to download if missing
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=../common/yaml-common.sh
+source "${SCRIPT_DIR}/../common/yaml-common.sh"
 
 export SOPS_AGE_KEY="${AGE_KEY:-}"
 TARGET_FILE="${FILE_PATH:-config/secrets.enc.yaml}"
@@ -20,6 +17,7 @@ if [ -z "$SOPS_AGE_KEY" ]; then
 	echo "::notice ::No SOPS_AGE_KEY provided. Skipping decryption."
 	if [ -n "${GITHUB_OUTPUT:-}" ]; then
 		echo "decrypted=false" >>"$GITHUB_OUTPUT"
+		echo "json={}" >>"$GITHUB_OUTPUT"
 	fi
 	exit 0
 fi
@@ -28,6 +26,7 @@ if [ ! -f "$TARGET_FILE" ]; then
 	echo "::warning ::Encrypted file '$TARGET_FILE' does not exist. Skipping decryption."
 	if [ -n "${GITHUB_OUTPUT:-}" ]; then
 		echo "decrypted=false" >>"$GITHUB_OUTPUT"
+		echo "json={}" >>"$GITHUB_OUTPUT"
 	fi
 	exit 0
 fi
@@ -46,9 +45,23 @@ if ! command -v sops >/dev/null 2>&1; then
 	esac
 
 	DOWNLOAD_URL="https://github.com/getsops/sops/releases/download/v${DESIRED_SOPS_VERSION}/sops-v${DESIRED_SOPS_VERSION}.linux.${ARCH}"
+	CHECKSUMS_URL="https://github.com/getsops/sops/releases/download/v${DESIRED_SOPS_VERSION}/sops-v${DESIRED_SOPS_VERSION}.checksums.txt"
 	INSTALL_DIR="${RUNNER_TEMP:-/tmp}/bin"
 	mkdir -p "$INSTALL_DIR"
 	curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/sops"
+	curl -fsSL "$CHECKSUMS_URL" -o "${INSTALL_DIR}/sops.checksums.txt"
+
+	(
+		cd "$INSTALL_DIR"
+		EXPECTED_HASH="$(grep "sops-v${DESIRED_SOPS_VERSION}.linux.${ARCH}$" sops.checksums.txt | awk '{print $1}')"
+		if [ -z "$EXPECTED_HASH" ]; then
+			echo "::error ::Could not find checksum for sops-v${DESIRED_SOPS_VERSION}.linux.${ARCH} in sops.checksums.txt"
+			exit 1
+		fi
+		echo "${EXPECTED_HASH}  sops" | sha256sum -c -
+		rm -f sops.checksums.txt
+	)
+
 	chmod +x "${INSTALL_DIR}/sops"
 	export PATH="${INSTALL_DIR}:${PATH}"
 	if [ -n "${GITHUB_PATH:-}" ]; then
@@ -68,45 +81,10 @@ if [ -n "${GITHUB_OUTPUT:-}" ]; then
 	echo "decrypted=true" >>"$GITHUB_OUTPUT"
 fi
 
-# Extract requested keys into a masked JSON object
-if [ -n "${KEYS:-}" ] && [ -f "$DEST_PATH" ]; then
-	json_pairs=()
-	while IFS= read -r key || [ -n "$key" ]; do
-		key="$(echo "$key" | tr -d ' ,' | tr -d '\r')"
-		[ -z "$key" ] && continue
+# Extract requested keys into a masked JSON object using native sops JSON output
+json_raw="$(sops --decrypt --output-type json "$TARGET_FILE")"
+json_out="$(filter_json_keys "$json_raw" "${KEYS:-}" "true")"
 
-		val="$(awk -v k="$key" '
-			$1 == k ":" {
-				sub(/^[^:]*:[ \t]*/, "")
-				if ($0 ~ /^"/) {
-					sub(/^"/, "")
-					sub(/".*$/, "")
-				} else if ($0 ~ /^\x27/) {
-					sub(/^\x27/, "")
-					sub(/\x27.*$/, "")
-				} else {
-					sub(/[ \t]+#.*$/, "")
-					sub(/[ \t]+$/, "")
-				}
-				print
-				exit
-			}
-		' "$DEST_PATH")"
-
-		if [ -n "$val" ]; then
-			echo "::add-mask::$val"
-			escaped_val="$(printf '%s' "$val" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
-			json_pairs+=("\"$key\":\"$escaped_val\"")
-		fi
-	done <<<"$KEYS"
-
-	json_out="{$(
-		IFS=,
-		echo "${json_pairs[*]:-}"
-	)}"
-	if [ -n "${GITHUB_OUTPUT:-}" ]; then
-		echo "json=$json_out" >>"$GITHUB_OUTPUT"
-	fi
-elif [ -n "${GITHUB_OUTPUT:-}" ]; then
-	echo "json={}" >>"$GITHUB_OUTPUT"
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+	echo "json=$json_out" >>"$GITHUB_OUTPUT"
 fi

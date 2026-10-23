@@ -5,7 +5,7 @@ set -euo pipefail
 # Environment variables:
 #   CLOUDFLARE_API_TOKEN: API Token
 #   WORKER_ENV: Optional target environment
-#   WORKER_SECRETS: Multiline list of secret names to upload via wrangler secret put
+#   WORKER_SECRETS: Multiline or space/comma-separated list of secret names to upload via wrangler secret put
 
 if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
 	echo "::error ::Missing CLOUDFLARE_API_TOKEN. Deployment aborted."
@@ -29,10 +29,12 @@ if [ -n "${WORKER_ENV:-}" ]; then
 	ENV_ARGS+=(--env "$WORKER_ENV")
 fi
 
-# Provision any requested secrets
+echo "Deploying worker via Wrangler..."
+npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"}
+
+# Provision any requested secrets after worker exists
 if [ -n "${WORKER_SECRETS:-}" ]; then
-	while IFS= read -r sec_name || [ -n "$sec_name" ]; do
-		sec_name="$(echo "$sec_name" | tr -d ' ,' | tr -d '\r')"
+	while IFS= read -r sec_name; do
 		[ -z "$sec_name" ] && continue
 
 		sec_val="${!sec_name:-}"
@@ -43,9 +45,7 @@ if [ -n "${WORKER_SECRETS:-}" ]; then
 		else
 			echo "::warning ::Secret '$sec_name' requested but not set in step environment. Skipping."
 		fi
-	done <<<"$WORKER_SECRETS"
+	done < <(printf '%s\n' "$WORKER_SECRETS" | tr ', \t' '\n' | tr -d '\r' | grep -v '^$' || true)
 fi
 
-echo "Deploying worker via Wrangler..."
-npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"}
 echo "::notice ::Cloudflare Worker successfully deployed!"
