@@ -39,7 +39,7 @@ if [ -n "${WORKER_SECRETS:-}" ]; then
 		if [ -n "$sec_val" ]; then
 			echo "::add-mask::$sec_val"
 			echo "Provisioning secret '$sec_name'..."
-			printf '%s' "$sec_val" | npx --yes wrangler secret put "$sec_name" "${ENV_ARGS[@]:-}"
+			printf '%s' "$sec_val" | npx --yes wrangler secret put "$sec_name" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"}
 		else
 			echo "::warning ::Secret '$sec_name' requested but not set in step environment. Skipping."
 		fi
@@ -47,5 +47,5 @@ if [ -n "${WORKER_SECRETS:-}" ]; then
 fi
 
 echo "Deploying worker via Wrangler..."
-npx --yes wrangler deploy "${ENV_ARGS[@]:-}"
+npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"}
 echo "::notice ::Cloudflare Worker successfully deployed!"

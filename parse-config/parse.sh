@@ -28,8 +28,16 @@ while IFS= read -r key || [ -n "$key" ]; do
 	val="$(awk -v k="$key" '
 		$1 == k ":" {
 			sub(/^[^:]*:[ \t]*/, "")
-			sub(/#.*$/, "")
-			gsub(/^[ \t"]+|[ \t"]+$/, "")
+			if ($0 ~ /^"/) {
+				sub(/^"/, "")
+				sub(/".*$/, "")
+			} else if ($0 ~ /^\x27/) {
+				sub(/^\x27/, "")
+				sub(/\x27.*$/, "")
+			} else {
+				sub(/[ \t]+#.*$/, "")
+				sub(/[ \t]+$/, "")
+			}
 			print
 			exit
 		}
