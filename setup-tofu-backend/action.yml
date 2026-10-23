@@ -48,11 +48,14 @@ runs:
         echo "::add-mask::$S3_ACCESS_KEY"
         echo "::add-mask::$S3_SECRET_KEY"
 
+        export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY"
+        export AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
         echo "AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY" >> "$GITHUB_ENV"
         echo "AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY" >> "$GITHUB_ENV"
 
         if [ -n "${STATE_PASSPHRASE:-}" ]; then
           echo "::add-mask::$STATE_PASSPHRASE"
+          export TF_VAR_state_encryption_passphrase="$STATE_PASSPHRASE"
           echo "TF_VAR_state_encryption_passphrase=$STATE_PASSPHRASE" >> "$GITHUB_ENV"
         fi
 
