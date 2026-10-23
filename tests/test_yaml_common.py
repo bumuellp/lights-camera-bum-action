@@ -89,7 +89,7 @@ def test_data_types_representation():
     assert nested_parsed == {"child": "leaf", "count": 10}
 
 
-def test_nested_dot_paths_and_underscore_aliases():
+def test_nested_dot_paths():
     doc = {
         "server": {
             "node": {
@@ -107,9 +107,9 @@ def test_nested_dot_paths_and_underscore_aliases():
     data = json.loads(res.stdout.strip())
 
     assert data["server.node.location"] == "fsn1"
-    assert data["server_node_location"] == "fsn1"
     assert data["discord.allowed_user_ids"] == "111222,333444"
-    assert data["discord_allowed_user_ids"] == "111222,333444"
+    assert "server_node_location" not in data
+    assert "discord_allowed_user_ids" not in data
 
 
 def test_masking_behavior():
@@ -175,5 +175,4 @@ def test_parse_sh_fallback_mechanism(tmp_path):
     assert len(json_lines) == 1
     data = json.loads(json_lines[0].removeprefix("json="))
     assert data["discord.enabled"] == "false"
-    assert data["discord_enabled"] == "false"
     assert data["discord.allowed_user_ids"] == ""

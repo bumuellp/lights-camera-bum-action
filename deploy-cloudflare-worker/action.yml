@@ -13,6 +13,10 @@ inputs:
     description: Optional Cloudflare environment specified in wrangler.toml (e.g. 'production', 'staging').
     required: false
     default: ''
+  vars:
+    description: Optional multiline or comma-separated list of environment variable names to pass as --var to wrangler deploy.
+    required: false
+    default: ''
   secrets:
     description: Optional multiline or comma-separated list of secret names available in env to provision via wrangler secret put.
     required: false
@@ -26,5 +30,6 @@ runs:
       env:
         CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
         WORKER_ENV: ${{ inputs.environment }}
+        WORKER_VARS: ${{ inputs.vars }}
         WORKER_SECRETS: ${{ inputs.secrets }}
       run: bash "$GITHUB_ACTION_PATH/deploy.sh"

@@ -41,20 +41,28 @@ if ! command -v yq >/dev/null 2>&1; then
 
 	DOWNLOAD_URL="https://github.com/mikefarah/yq/releases/download/${DESIRED_YQ_VERSION}/yq_linux_${ARCH}"
 	CHECKSUMS_URL="https://github.com/mikefarah/yq/releases/download/${DESIRED_YQ_VERSION}/checksums"
+	ORDER_URL="https://github.com/mikefarah/yq/releases/download/${DESIRED_YQ_VERSION}/checksums_hashes_order"
 	INSTALL_DIR="${RUNNER_TEMP:-/tmp}/bin"
 	mkdir -p "$INSTALL_DIR"
 	curl -fsSL "$DOWNLOAD_URL" -o "${INSTALL_DIR}/yq"
 	curl -fsSL "$CHECKSUMS_URL" -o "${INSTALL_DIR}/yq.checksums"
+	curl -fsSL "$ORDER_URL" -o "${INSTALL_DIR}/yq.order"
 
 	(
 		cd "$INSTALL_DIR"
-		EXPECTED_HASH="$(grep -E "^yq_linux_${ARCH}[[:space:]]" yq.checksums | awk '{print $19}')"
+		# Dynamically determine the 1-based column for SHA-256 (column 1 is filename, so line + 1)
+		sha_col="$(awk '$1 == "SHA-256" {print NR + 1; exit}' yq.order)"
+		if [ -z "$sha_col" ]; then
+			echo "::error ::Could not locate SHA-256 algorithm in yq checksums_hashes_order"
+			exit 1
+		fi
+		EXPECTED_HASH="$(awk -v col="$sha_col" -v target="yq_linux_${ARCH}" '$1 == target {print $col; exit}' yq.checksums)"
 		if [ -z "$EXPECTED_HASH" ]; then
 			echo "::error ::Could not find SHA-256 checksum for yq_linux_${ARCH} in yq.checksums"
 			exit 1
 		fi
 		echo "${EXPECTED_HASH}  yq" | sha256sum -c -
-		rm -f yq.checksums
+		rm -f yq.checksums yq.order
 	)
 
 	chmod +x "${INSTALL_DIR}/yq"

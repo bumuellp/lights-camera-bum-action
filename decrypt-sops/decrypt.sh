@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/../common/yaml-common.sh"
 
 export SOPS_AGE_KEY="${AGE_KEY:-}"
 TARGET_FILE="${FILE_PATH:-config/secrets.enc.yaml}"
-DEST_PATH="${OUTPUT_PATH:-config/secrets.yaml}"
+DEST_PATH="${OUTPUT_PATH:-}"
 MODE="${FILE_MODE:-0600}"
 DESIRED_SOPS_VERSION="${SOPS_VERSION:-3.9.4}"
 
@@ -69,21 +69,32 @@ if ! command -v sops >/dev/null 2>&1; then
 	fi
 fi
 
-# Create target directory if needed
-mkdir -p "$(dirname "$DEST_PATH")"
+# Decrypt plaintext file only if DEST_PATH is explicitly set
+if [ -n "$DEST_PATH" ]; then
+	mkdir -p "$(dirname "$DEST_PATH")"
+	echo "Decrypting '$TARGET_FILE' -> '$DEST_PATH'..."
+	sops --decrypt "$TARGET_FILE" >"$DEST_PATH"
+	chmod "$MODE" "$DEST_PATH"
+	echo "::notice ::Successfully decrypted '$TARGET_FILE' to '$DEST_PATH' (mode: $MODE)."
+else
+	echo "::notice ::Decrypted keys extracted directly to memory without disk persistence."
+fi
 
-echo "Decrypting '$TARGET_FILE' -> '$DEST_PATH'..."
-sops --decrypt "$TARGET_FILE" >"$DEST_PATH"
-chmod "$MODE" "$DEST_PATH"
-
-echo "::notice ::Successfully decrypted '$TARGET_FILE' to '$DEST_PATH' (mode: $MODE)."
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
 	echo "decrypted=true" >>"$GITHUB_OUTPUT"
 fi
 
 # Extract requested keys into a masked JSON object using native sops JSON output
-json_raw="$(sops --decrypt --output-type json "$TARGET_FILE")"
-json_out="$(filter_json_keys "$json_raw" "${KEYS:-}" "true")"
+if [ -n "${KEYS:-}" ]; then
+	if [ -n "$DEST_PATH" ] && command -v yq >/dev/null 2>&1; then
+		json_raw="$(yq -o=json '.' "$DEST_PATH")"
+	else
+		json_raw="$(sops --decrypt --output-type json "$TARGET_FILE")"
+	fi
+	json_out="$(filter_json_keys "$json_raw" "${KEYS:-}" "true")"
+else
+	json_out="{}"
+fi
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
 	echo "json=$json_out" >>"$GITHUB_OUTPUT"

@@ -29,8 +29,22 @@ if [ -n "${WORKER_ENV:-}" ]; then
 	ENV_ARGS+=(--env "$WORKER_ENV")
 fi
 
+VAR_ARGS=()
+if [ -n "${WORKER_VARS:-}" ]; then
+	while IFS= read -r var_name; do
+		[ -z "$var_name" ] && continue
+
+		var_val="${!var_name:-}"
+		if [ -n "$var_val" ]; then
+			VAR_ARGS+=(--var "${var_name}:${var_val}")
+		else
+			echo "::warning ::Runtime var '$var_name' requested but not set in step environment. Skipping."
+		fi
+	done < <(printf '%s\n' "$WORKER_VARS" | tr ', \t' '\n' | tr -d '\r' | grep -v '^$' || true)
+fi
+
 echo "Deploying worker via Wrangler..."
-npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"}
+npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${VAR_ARGS[@]+"${VAR_ARGS[@]}"}
 
 # Provision any requested secrets after worker exists
 if [ -n "${WORKER_SECRETS:-}" ]; then

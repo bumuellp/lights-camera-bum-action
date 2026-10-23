@@ -32,7 +32,7 @@ filter_json_keys() {
 							($val | tostring)
 						end
 					) as $val_str |
-					. + { ($k): $val_str } + (if ($k | contains(".")) then { ($k | gsub("\\."; "_")): $val_str } else {} end)
+					. + { ($k): $val_str }
 				else
 					.
 				end

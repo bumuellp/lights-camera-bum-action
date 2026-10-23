@@ -11,9 +11,9 @@ inputs:
     required: false
     default: 'config/secrets.enc.yaml'
   output:
-    description: Target path for the decrypted plaintext file.
+    description: Optional target path for the decrypted plaintext file. If omitted, no plaintext file is written.
     required: false
-    default: 'config/secrets.yaml'
+    default: ''
   mode:
     description: File permission bits for the decrypted file.
     required: false
