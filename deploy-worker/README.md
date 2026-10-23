@@ -15,7 +15,7 @@ Standardized GitHub Composite Action to build and deploy serverless Cloudflare W
 
 ```yaml
 - name: Deploy Worker
-  uses: bumuellp/lights-camera-bum-action/deploy-cloudflare-worker@main
+  uses: bumuellp/lights-camera-bum-action/deploy-worker@main
   with:
     api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     working-directory: integrations/discord-bot
