@@ -22,10 +22,17 @@ inputs:
     description: Version of SOPS to install if not present on runner.
     required: false
     default: '3.9.4'
+  keys:
+    description: Optional multiline or space/comma-separated list of keys to extract into a masked JSON object output.
+    required: false
+    default: ''
 outputs:
   decrypted:
     description: Boolean indicating whether the file was successfully decrypted ('true' or 'false').
     value: ${{ steps.decrypt.outputs.decrypted }}
+  json:
+    description: "JSON object containing extracted key-value pairs (all values masked with ::add-mask::)."
+    value: ${{ steps.decrypt.outputs.json }}
 runs:
   using: composite
   steps:
@@ -38,4 +45,5 @@ runs:
         OUTPUT_PATH: ${{ inputs.output }}
         FILE_MODE: ${{ inputs.mode }}
         SOPS_VERSION: ${{ inputs.sops-version }}
+        KEYS: ${{ inputs.keys }}
       run: bash "$GITHUB_ACTION_PATH/decrypt.sh"

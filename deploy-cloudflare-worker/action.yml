@@ -1,0 +1,30 @@
+---
+name: Deploy Cloudflare Worker
+description: Build and deploy serverless Cloudflare Workers using Wrangler CLI with automated secret provisioning.
+inputs:
+  api-token:
+    description: Cloudflare API token with Workers:Edit permissions.
+    required: true
+  working-directory:
+    description: Working directory containing wrangler.toml.
+    required: false
+    default: '.'
+  environment:
+    description: Optional Cloudflare environment specified in wrangler.toml (e.g. 'production', 'staging').
+    required: false
+    default: ''
+  secrets:
+    description: Optional multiline or comma-separated list of secret names available in env to provision via wrangler secret put.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Deploy Worker via Wrangler
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ inputs.api-token }}
+        WORKER_ENV: ${{ inputs.environment }}
+        WORKER_SECRETS: ${{ inputs.secrets }}
+      run: bash "$GITHUB_ACTION_PATH/deploy.sh"

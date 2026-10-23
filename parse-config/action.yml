@@ -1,0 +1,35 @@
+---
+name: Parse Config YAML
+description: Parse key-value pairs from YAML configuration files (with automatic fallback) into a JSON object output.
+inputs:
+  file:
+    description: Primary YAML configuration file to parse.
+    required: false
+    default: 'config/settings.yaml'
+  fallback-file:
+    description: Fallback YAML configuration file if primary file does not exist.
+    required: false
+    default: 'config/settings.example.yaml'
+  keys:
+    description: Multiline or space/comma-separated list of top-level keys to extract into a JSON object output.
+    required: true
+  mask:
+    description: "Whether to call ::add-mask:: on extracted values ('true' or 'false')."
+    required: false
+    default: 'false'
+outputs:
+  json:
+    description: JSON object containing all extracted key-value pairs.
+    value: ${{ steps.parse.outputs.json }}
+runs:
+  using: composite
+  steps:
+    - name: Parse Configuration File
+      id: parse
+      shell: bash
+      env:
+        CONFIG_FILE: ${{ inputs.file }}
+        FALLBACK_FILE: ${{ inputs.fallback-file }}
+        KEYS: ${{ inputs.keys }}
+        MASK_VALUES: ${{ inputs.mask }}
+      run: bash "$GITHUB_ACTION_PATH/parse.sh"

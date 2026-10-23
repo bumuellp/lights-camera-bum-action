@@ -1,0 +1,52 @@
+---
+name: Setup Rust Toolchain
+description: Standardized Rust setup with rustup toolchain, optional components (clippy, rustfmt), targets, and Swatinem/rust-cache.
+inputs:
+  toolchain:
+    description: Rust toolchain version (e.g. 'stable', 'nightly', '1.85.0').
+    required: false
+    default: 'stable'
+  components:
+    description: Comma-separated components to install (e.g. 'clippy, rustfmt').
+    required: false
+    default: 'clippy, rustfmt'
+  targets:
+    description: Comma-separated compilation targets to add (e.g. 'wasm32-unknown-unknown').
+    required: false
+    default: ''
+  cache:
+    description: Whether to enable Swatinem/rust-cache ('true' or 'false').
+    required: false
+    default: 'true'
+  workspaces:
+    description: Space-delimited workspace or crate paths for caching (e.g. 'integrations/discord-bot').
+    required: false
+    default: ''
+  install-worker-build:
+    description: Whether to install worker-build for Cloudflare Workers ('true' or 'false').
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Setup Rust Toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+
+    - name: Rust Cache
+      if: inputs.cache == 'true'
+      uses: Swatinem/rust-cache@82a92a6e8fbeee08c6c4da527196677222f9c6d8  # v2.7.7
+      with:
+        workspaces: ${{ inputs.workspaces }}
+
+    - name: Install worker-build
+      if: inputs.install-worker-build == 'true'
+      shell: bash
+      run: |
+        if ! command -v worker-build >/dev/null 2>&1; then
+          echo "Installing worker-build..."
+          cargo install -q worker-build
+        fi

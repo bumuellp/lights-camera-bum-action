@@ -67,3 +67,38 @@ echo "::notice ::Successfully decrypted '$TARGET_FILE' to '$DEST_PATH' (mode: $M
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
 	echo "decrypted=true" >>"$GITHUB_OUTPUT"
 fi
+
+# Extract requested keys into a masked JSON object
+if [ -n "${KEYS:-}" ] && [ -f "$DEST_PATH" ]; then
+	json_pairs=()
+	while IFS= read -r key || [ -n "$key" ]; do
+		key="$(echo "$key" | tr -d ' ,' | tr -d '\r')"
+		[ -z "$key" ] && continue
+
+		val="$(awk -v k="$key" '
+			$1 == k ":" {
+				sub(/^[^:]*:[ \t]*/, "")
+				sub(/#.*$/, "")
+				gsub(/^[ \t"]+|[ \t"]+$/, "")
+				print
+				exit
+			}
+		' "$DEST_PATH")"
+
+		if [ -n "$val" ]; then
+			echo "::add-mask::$val"
+			escaped_val="$(printf '%s' "$val" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+			json_pairs+=("\"$key\":\"$escaped_val\"")
+		fi
+	done <<<"$KEYS"
+
+	json_out="{$(
+		IFS=,
+		echo "${json_pairs[*]:-}"
+	)}"
+	if [ -n "${GITHUB_OUTPUT:-}" ]; then
+		echo "json=$json_out" >>"$GITHUB_OUTPUT"
+	fi
+elif [ -n "${GITHUB_OUTPUT:-}" ]; then
+	echo "json={}" >>"$GITHUB_OUTPUT"
+fi
