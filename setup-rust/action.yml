@@ -38,7 +38,7 @@ runs:
 
     - name: Rust Cache
       if: inputs.cache == 'true'
-      uses: Swatinem/rust-cache@82a92a6e8fbeee08c6c4da527196677222f9c6d8  # v2.7.7
+      uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3  # v2.7.7
       with:
         workspaces: ${{ inputs.workspaces }}
 
