@@ -1,0 +1,23 @@
+---
+name: Rotate Hetzner Cloud Snapshots
+description: Prune older Hetzner Cloud snapshot images matching a label selector to maintain a target retention count.
+inputs:
+  token:
+    description: Hetzner Cloud API authentication token.
+    required: true
+  label-selector:
+    description: Label selector query to filter snapshots (e.g. 'role=golden-image').
+    required: true
+  keep:
+    description: Number of recent snapshots to retain.
+    required: false
+    default: '1'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HCLOUD_TOKEN: ${{ inputs.token }}
+        LABEL_SELECTOR: ${{ inputs.label-selector }}
+        KEEP_COUNT: ${{ inputs.keep }}
+      run: bash "$GITHUB_ACTION_PATH/rotate.sh"

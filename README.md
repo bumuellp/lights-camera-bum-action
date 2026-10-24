@@ -20,6 +20,7 @@ Reusable, production-grade GitHub Actions suite for CI/CD pipelines, container p
 | **[`sync-dns-record`](sync-dns-record/)** | Provider-agnostic DNS manager for deSEC.io and IONOS Domain APIs. | [Read Docs](sync-dns-record/README.md) |
 | **[`decrypt-sops`](decrypt-sops/)** | Decrypt SOPS-encrypted secrets using an Age secret key with automatic binary resolution. | [Read Docs](decrypt-sops/README.md) |
 | **[`setup-tofu-backend`](setup-tofu-backend/)** | Initialize OpenTofu with an S3-compatible remote state backend and masked credentials. | [Read Docs](setup-tofu-backend/README.md) |
+| **[`rotate-hcloud-snapshots`](rotate-hcloud-snapshots/)** | Prune older Hetzner Cloud snapshots matching a label selector to maintain target retention. | [Read Docs](rotate-hcloud-snapshots/README.md) |
 
 
 ---
