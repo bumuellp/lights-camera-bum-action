@@ -28,17 +28,17 @@ fi
 
 echo "Querying Hetzner Cloud snapshots with label '${LABEL_SELECTOR}' (retaining newest ${KEEP_COUNT})..."
 
-# List matching snapshots sorted by created date descending
-# Output format: <id>\t<created>\t<description>
-SNAPSHOT_ROWS="$(hcloud image list --type snapshot --selector "$LABEL_SELECTOR" --sort created:desc -o noheader -o columns=id,created,description)"
+# List matching snapshots sorted by created date descending (IDs only)
+SNAPSHOT_IDS="$(hcloud image list --type snapshot --selector "$LABEL_SELECTOR" --sort created:desc -o noheader -o columns=id)"
 
-if [ -z "$SNAPSHOT_ROWS" ]; then
+# Count total matching snapshots
+TOTAL_FOUND="$(echo "$SNAPSHOT_IDS" | grep -E -c '^[[:space:]]*[0-9]+' || true)"
+
+if [ "$TOTAL_FOUND" -eq 0 ]; then
 	echo "Found 0 snapshot(s) matching '${LABEL_SELECTOR}'. Nothing to rotate."
 	exit 0
 fi
 
-# Count total matching snapshots
-TOTAL_FOUND="$(echo "$SNAPSHOT_ROWS" | grep -c . || true)"
 echo "Found ${TOTAL_FOUND} snapshot(s) matching '${LABEL_SELECTOR}'."
 
 if [ "$TOTAL_FOUND" -le "$KEEP_COUNT" ]; then
@@ -48,14 +48,12 @@ fi
 
 # Select snapshots beyond KEEP_COUNT (skip newest KEEP_COUNT entries)
 DROP_START=$((KEEP_COUNT + 1))
-OLD_SNAPSHOTS="$(echo "$SNAPSHOT_ROWS" | tail -n "+${DROP_START}")"
+OLD_SNAPSHOTS="$(echo "$SNAPSHOT_IDS" | tail -n "+${DROP_START}")"
 
-echo "$OLD_SNAPSHOTS" | while IFS=$'\t' read -r SNAPSHOT_ID SNAPSHOT_CREATED SNAPSHOT_DESC; do
-	[ -n "$SNAPSHOT_ID" ] || continue
-	SNAPSHOT_DESC="${SNAPSHOT_DESC:-unnamed}"
-	SNAPSHOT_CREATED="${SNAPSHOT_CREATED:-unknown}"
+echo "$OLD_SNAPSHOTS" | while read -r SNAPSHOT_ID; do
+	[[ "$SNAPSHOT_ID" =~ ^[0-9]+$ ]] || continue
 
-	echo "Deleting old snapshot: ID=${SNAPSHOT_ID} (${SNAPSHOT_DESC}, created ${SNAPSHOT_CREATED})..."
+	echo "Deleting old snapshot: ID=${SNAPSHOT_ID}..."
 	hcloud image delete "$SNAPSHOT_ID"
 	echo "Successfully deleted snapshot ${SNAPSHOT_ID}."
 done

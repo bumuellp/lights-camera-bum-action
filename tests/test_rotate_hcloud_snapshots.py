@@ -102,10 +102,10 @@ with open('{call_log}', 'a') as f:
     f.write(' '.join(args) + '\\n')
 
 if 'image' in args and 'list' in args:
-    # Print 3 snapshots in tab-separated format: id \t created \t description
-    print("101\\t2026-10-24T05:00:00Z\\timage-newest")
-    print("102\\t2026-10-24T04:00:00Z\\timage-older")
-    print("103\\t2026-10-24T03:00:00Z\\timage-oldest")
+    # Print 3 snapshots in ID column format (with whitespace padding like real hcloud)
+    print("  101  ")
+    print("  102  ")
+    print("  103  ")
     sys.exit(0)
 
 if 'image' in args and 'delete' in args:
@@ -154,7 +154,7 @@ with open('{call_log}', 'a') as f:
     f.write(' '.join(args) + '\\n')
 
 if 'image' in args and 'list' in args:
-    print("201\\t2026-10-24T05:00:00Z\\timage-sole")
+    print("  201  ")
     sys.exit(0)
 
 sys.exit(0)
@@ -174,6 +174,45 @@ sys.exit(0)
     assert res.returncode == 0, f"Script failed: {res.stderr}\nOutput: {res.stdout}"
     assert "Found 1 snapshot(s)" in res.stdout
     assert "No old snapshots to delete" in res.stdout
+
+    calls = call_log.read_text().splitlines()
+    delete_calls = [c for c in calls if "image delete" in c]
+    assert len(delete_calls) == 0
+
+
+def test_rotate_sh_zero_snapshots(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    call_log = tmp_path / "calls.log"
+
+    mock_hcloud = mock_bin / "hcloud"
+    mock_hcloud.write_text(f"""#!/usr/bin/env python3
+import sys
+
+args = sys.argv[1:]
+with open('{call_log}', 'a') as f:
+    f.write(' '.join(args) + '\\n')
+
+if 'image' in args and 'list' in args:
+    sys.exit(0)
+
+sys.exit(0)
+""")
+    mock_hcloud.chmod(0o755)
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "HCLOUD_TOKEN": "mock-token-xyz",
+        "LABEL_SELECTOR": "role=golden-image",
+        "KEEP_COUNT": "1",
+    }
+
+    res = subprocess.run(
+        ["bash", str(ROTATE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0, f"Script failed: {res.stderr}\nOutput: {res.stdout}"
+    assert "Found 0 snapshot(s)" in res.stdout
+    assert "Nothing to rotate" in res.stdout
 
     calls = call_log.read_text().splitlines()
     delete_calls = [c for c in calls if "image delete" in c]
