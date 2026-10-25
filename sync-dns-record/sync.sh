@@ -290,6 +290,43 @@ print(json.dumps([{'name': '${FQDN}', 'type': '${RECORD_TYPE}', 'content': '${fi
 }
 
 # ------------------------------------------------------------------------------
+# 3. Hetzner DNS Provider Implementation (via native hcloud CLI)
+# ------------------------------------------------------------------------------
+sync_hetzner() {
+	if ! command -v hcloud >/dev/null 2>&1; then
+		echo "ERROR: 'hcloud' CLI is required for Hetzner DNS provider but not installed." >&2
+		exit 1
+	fi
+
+	local hetzner_name="${SUBNAME:-@}"
+	export HCLOUD_TOKEN="${TOKEN}"
+
+	if [ "$ACTION" = "delete" ]; then
+		echo "Deleting Hetzner RRset: name='${hetzner_name}', type='${RECORD_TYPE}' for zone '${DOMAIN}'..."
+		hcloud zone rrset delete "$DOMAIN" "$hetzner_name" "$RECORD_TYPE" >/dev/null 2>&1 || true
+		echo "Hetzner DNS record deleted successfully (or did not exist)."
+		return 0
+	elif [ "$ACTION" = "sync" ]; then
+		if [ -z "$RECORDS_RAW" ]; then
+			echo "ERROR: records must be specified when action is 'sync'." >&2
+			exit 1
+		fi
+
+		# Normalize record value (first IP if multiple or array provided)
+		local record_val
+		record_val="$(echo "$RECORDS_RAW" | tr -d '[]"' | tr ', ' '\n' | grep -v '^$' | head -n 1)"
+
+		echo "Syncing Hetzner RRset: ${hetzner_name}.${DOMAIN} (${RECORD_TYPE}) -> '${record_val}' (TTL ${TTL})..."
+		hcloud zone set-records --record "$record_val" "$DOMAIN" "$hetzner_name" "$RECORD_TYPE"
+		hcloud zone rrset change-ttl "$DOMAIN" "$hetzner_name" "$RECORD_TYPE" --ttl "$TTL" >/dev/null 2>&1 || true
+		echo "Successfully updated Hetzner DNS record."
+	else
+		echo "ERROR: Unsupported action '${ACTION}'. Allowed: sync, delete." >&2
+		exit 1
+	fi
+}
+
+# ------------------------------------------------------------------------------
 # Dispatcher
 # ------------------------------------------------------------------------------
 case "$PROVIDER" in
@@ -299,8 +336,11 @@ desec)
 ionos)
 	sync_ionos
 	;;
+hetzner)
+	sync_hetzner
+	;;
 *)
-	echo "ERROR: Unsupported DNS provider '${PROVIDER}'. Supported: 'desec', 'ionos'." >&2
+	echo "ERROR: Unsupported DNS provider '${PROVIDER}'. Supported: 'desec', 'ionos', 'hetzner'." >&2
 	exit 1
 	;;
 esac

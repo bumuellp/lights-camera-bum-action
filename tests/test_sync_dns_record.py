@@ -207,3 +207,132 @@ sys.exit(0)
     assert "https://api.hosting.ionos.com/dns/v1/zones" in log_contents
     assert "mc.example.com" in log_contents
     assert "203.0.113.10" in log_contents
+
+
+def test_sync_hetzner_sync(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    hcloud_log = tmp_path / "hcloud.log"
+
+    mock_hcloud = mock_bin / "hcloud"
+    mock_hcloud.write_text(f"""#!/usr/bin/env python3
+import sys, os
+
+args = sys.argv[1:]
+with open('{hcloud_log}', 'a') as f:
+    f.write(f"TOKEN={{os.environ.get('HCLOUD_TOKEN')}} ARGS={{' '.join(args)}}\\n")
+sys.exit(0)
+""")
+    mock_hcloud.chmod(0o755)
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "DNS_PROVIDER": "hetzner",
+        "DNS_TOKEN": "secret-hcloud-token",
+        "DNS_DOMAIN": "example.com",
+        "DNS_SUBNAME": "mc",
+        "DNS_TYPE": "A",
+        "DNS_RECORDS": "203.0.113.88",
+        "DNS_TTL": "120",
+        "DNS_ACTION": "sync",
+    }
+
+    res = subprocess.run(
+        ["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0
+    assert "Successfully updated Hetzner DNS record" in res.stdout
+
+    log = hcloud_log.read_text()
+    assert "TOKEN=secret-hcloud-token" in log
+    assert "zone set-records --record 203.0.113.88 example.com mc A" in log
+    assert "zone rrset change-ttl example.com mc A --ttl 120" in log
+
+
+def test_sync_hetzner_sync_apex(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    hcloud_log = tmp_path / "hcloud.log"
+
+    mock_hcloud = mock_bin / "hcloud"
+    mock_hcloud.write_text(f"""#!/usr/bin/env python3
+import sys, os
+
+args = sys.argv[1:]
+with open('{hcloud_log}', 'a') as f:
+    f.write(f"TOKEN={{os.environ.get('HCLOUD_TOKEN')}} ARGS={{' '.join(args)}}\\n")
+sys.exit(0)
+""")
+    mock_hcloud.chmod(0o755)
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "DNS_PROVIDER": "hetzner",
+        "DNS_TOKEN": "secret-hcloud-token",
+        "DNS_DOMAIN": "example.com",
+        "DNS_SUBNAME": "",
+        "DNS_TYPE": "A",
+        "DNS_RECORDS": "203.0.113.88",
+        "DNS_TTL": "60",
+        "DNS_ACTION": "sync",
+    }
+
+    res = subprocess.run(
+        ["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0
+    log = hcloud_log.read_text()
+    assert "zone set-records --record 203.0.113.88 example.com @ A" in log
+    assert "zone rrset change-ttl example.com @ A --ttl 60" in log
+
+
+def test_sync_hetzner_delete(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    hcloud_log = tmp_path / "hcloud.log"
+
+    mock_hcloud = mock_bin / "hcloud"
+    mock_hcloud.write_text(f"""#!/usr/bin/env python3
+import sys, os
+
+args = sys.argv[1:]
+with open('{hcloud_log}', 'a') as f:
+    f.write(f"TOKEN={{os.environ.get('HCLOUD_TOKEN')}} ARGS={{' '.join(args)}}\\n")
+sys.exit(0)
+""")
+    mock_hcloud.chmod(0o755)
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "DNS_PROVIDER": "hetzner",
+        "DNS_TOKEN": "secret-hcloud-token",
+        "DNS_DOMAIN": "example.com",
+        "DNS_SUBNAME": "mc",
+        "DNS_TYPE": "A",
+        "DNS_ACTION": "delete",
+    }
+
+    res = subprocess.run(
+        ["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0
+    assert "Hetzner DNS record deleted successfully" in res.stdout
+    log = hcloud_log.read_text()
+    assert "TOKEN=secret-hcloud-token" in log
+    assert "zone rrset delete example.com mc A" in log
+
+
+def test_sync_hetzner_missing_binary(tmp_path):
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "DNS_PROVIDER": "hetzner",
+        "DNS_TOKEN": "secret-hcloud-token",
+        "DNS_DOMAIN": "example.com",
+        "DNS_ACTION": "delete",
+    }
+
+    res = subprocess.run(
+        ["bash", str(SYNC_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode != 0
+    assert "'hcloud' CLI is required" in res.stderr

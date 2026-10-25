@@ -2,7 +2,7 @@
 
 Provider-agnostic composite GitHub Action for synchronizing and removing DNS records via REST APIs.
 
-Supports **[deSEC.io](https://desec.io)** and **[IONOS Domain API](https://developer.hosting.ionos.de/docs/dns)** out of the box with zero external dependencies (pure `curl`, `bash`, and `python3`).
+Supports **[deSEC.io](https://desec.io)**, **[IONOS Domain API](https://developer.hosting.ionos.de/docs/dns)**, and **[Hetzner DNS](https://docs.hetzner.cloud/reference/cloud#zones)** out of the box.
 
 ---
 
@@ -10,8 +10,8 @@ Supports **[deSEC.io](https://desec.io)** and **[IONOS Domain API](https://devel
 
 | Input | Required | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **`provider`** | No | `desec` | DNS provider: `desec` or `ionos`. |
-| **`token`** | **Yes** | — | API Token (deSEC Token or IONOS `X-API-Key`). |
+| **`provider`** | No | `desec` | DNS provider: `desec`, `ionos`, or `hetzner`. |
+| **`token`** | **Yes** | — | API Token (deSEC Token, IONOS `X-API-Key`, or Hetzner Cloud API token). |
 | **`domain`** | **Yes** | — | Registered zone / domain (e.g. `example.dedyn.io` or `example.com`). |
 | **`subname`** | No | `""` | Subdomain label (e.g. `mc` or `@` / empty for apex root). |
 | **`type`** | No | `A` | DNS record type (`A`, `AAAA`, `TXT`, `CNAME`). |
@@ -53,15 +53,30 @@ Supports **[deSEC.io](https://desec.io)** and **[IONOS Domain API](https://devel
     action: sync
 ```
 
-### 3. Deleting a Record upon Teardown
+### 3. Synchronizing an A-Record on Hetzner DNS
+```yaml
+- name: Update Hetzner DNS Record
+  uses: bumuellp/lights-camera-bum-action/sync-dns-record@v1
+  with:
+    provider: hetzner
+    token: ${{ secrets.HCLOUD_TOKEN }}
+    domain: example.com
+    subname: mc
+    type: A
+    records: ${{ steps.tofu.outputs.server_ip }}
+    ttl: 60
+    action: sync
+```
+
+### 4. Deleting a Record upon Teardown
 ```yaml
 - name: Remove DNS Record
   uses: bumuellp/lights-camera-bum-action/sync-dns-record@v1
   if: always()
   with:
-    provider: desec
-    token: ${{ secrets.DESEC_TOKEN }}
-    domain: my-server.dedyn.io
+    provider: hetzner
+    token: ${{ secrets.HCLOUD_TOKEN }}
+    domain: example.com
     subname: mc
     type: A
     action: delete
