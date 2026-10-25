@@ -35,32 +35,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Cache hcloud CLI
-      id: cache-hcloud
+    - name: Setup Hetzner Cloud CLI
       if: inputs.provider == 'hetzner'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: bumuellp/lights-camera-bum-action/setup-hcloud@v1
       with:
-        path: ~/.local/bin/hcloud
-        key: hcloud-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/action.yml', github.action_path)) }}
-
-    - name: Ensure hcloud CLI in PATH
-      shell: bash
-      if: inputs.provider == 'hetzner'
-      env:
-        # renovate: datasource=github-releases depName=hetznercloud/cli
-        HCLOUD_URL: "https://github.com/hetznercloud/cli/releases/download/v1.70.2/hcloud-linux-amd64.tar.gz"
-      run: |
-        mkdir -p "$HOME/.local/bin"
-        if [ ! -f "$HOME/.local/bin/hcloud" ] && ! command -v hcloud >/dev/null 2>&1; then
-          echo "Downloading hcloud CLI..."
-          ARCH="${{ runner.arch }}"
-          [ "$ARCH" = "X64" ] && ARCH="amd64"
-          [ "$ARCH" = "ARM64" ] && ARCH="arm64"
-          DL_URL="${HCLOUD_URL//amd64/$ARCH}"
-          curl -fsSL "$DL_URL" | tar -xz -C "$HOME/.local/bin" hcloud
-          chmod +x "$HOME/.local/bin/hcloud"
-        fi
-        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        token: ${{ inputs.token }}
 
     - shell: bash
       env:

@@ -130,6 +130,6 @@ def test_pre_commit_enforces_safe_directory_and_non_root_uid():
     assert 'git config --global --add safe.directory "*"' in run_script
     assert '-u "$(id -u):$(id -g)"' in run_script
     assert (
-        "ghcr.io/bumuellp/lint-tools:v1.3.0@sha256:c776fe7a4650f6be35b17a7fca4b153ac7927bce652954e8f07a99069d87aa36"
+        "ghcr.io/bumuellp/lint-tools:v1.4.1@sha256:3a6e02e1f03750890b4cc984e516c9552f71049829c751616b3ccb9791b02a46"
         in run_script
     )

@@ -1,0 +1,33 @@
+---
+name: Setup Hetzner Cloud CLI
+description: Download, cache, and add the official hcloud CLI binary to PATH.
+inputs:
+  version:
+    description: Version of hcloud to install.
+    required: false
+    # renovate: datasource=github-releases depName=hetznercloud/cli
+    default: 'v1.70.2'
+  token:
+    description: Hetzner Cloud API token to mask and export as HCLOUD_TOKEN.
+    required: false
+    default: ''
+  cache:
+    description: Whether to enable actions/cache for the hcloud binary.
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Cache hcloud CLI
+      if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.local/bin/hcloud
+        key: hcloud-${{ runner.os }}-${{ runner.arch }}-${{ inputs.version }}
+
+    - name: Install hcloud CLI
+      shell: bash
+      env:
+        HCLOUD_VERSION: ${{ inputs.version }}
+        HCLOUD_TOKEN: ${{ inputs.token }}
+      run: bash "$GITHUB_ACTION_PATH/setup.sh"
