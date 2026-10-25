@@ -75,37 +75,45 @@ def test_rotate_sh_invalid_keep_count():
     assert "integer" in res.stderr.lower()
 
 
+def test_rotate_sh_missing_binary():
+    env = {
+        "PATH": "/usr/bin:/bin",
+        "HCLOUD_TOKEN": "mock-token",
+        "LABEL_SELECTOR": "role=test",
+    }
+    res = subprocess.run(
+        ["bash", str(ROTATE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode != 0
+    assert "'hcloud' CLI is required" in res.stderr
+
+
 def test_rotate_sh_retention_mock(tmp_path):
     mock_bin = tmp_path / "bin"
     mock_bin.mkdir()
     call_log = tmp_path / "calls.log"
 
-    mock_curl = mock_bin / "curl"
-    mock_curl.write_text(f"""#!/usr/bin/env python3
-import json, sys
+    mock_hcloud = mock_bin / "hcloud"
+    mock_hcloud.write_text(f"""#!/usr/bin/env python3
+import sys
 
 args = sys.argv[1:]
 with open('{call_log}', 'a') as f:
     f.write(' '.join(args) + '\\n')
 
-# Check if DELETE request
-if '-X' in args and 'DELETE' in args:
-    # Print status code 204
-    if '%{{http_code}}' in ' '.join(args):
-        print('204', end='')
+if 'image' in args and 'list' in args:
+    # Print 3 snapshots in tab-separated format: id \t created \t description
+    print("101\\t2026-10-24T05:00:00Z\\timage-newest")
+    print("102\\t2026-10-24T04:00:00Z\\timage-older")
+    print("103\\t2026-10-24T03:00:00Z\\timage-oldest")
     sys.exit(0)
 
-# Otherwise return mock snapshot list (3 snapshots)
-snapshots = {{
-    "images": [
-        {{"id": 101, "description": "image-newest", "created": "2026-10-24T05:00:00Z"}},
-        {{"id": 102, "description": "image-older", "created": "2026-10-24T04:00:00Z"}},
-        {{"id": 103, "description": "image-oldest", "created": "2026-10-24T03:00:00Z"}}
-    ]
-}}
-print(json.dumps(snapshots))
+if 'image' in args and 'delete' in args:
+    sys.exit(0)
+
+sys.exit(0)
 """)
-    mock_curl.chmod(0o755)
+    mock_hcloud.chmod(0o755)
 
     env = {
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
@@ -123,13 +131,13 @@ print(json.dumps(snapshots))
     assert "Deleting old snapshot: ID=103" in res.stdout
     assert "ID=101" not in res.stdout
 
-    # Verify calls
     calls = call_log.read_text().splitlines()
-    delete_calls = [c for c in calls if "-X DELETE" in c]
+    assert any("image list" in c for c in calls)
+    delete_calls = [c for c in calls if "image delete" in c]
     assert len(delete_calls) == 2
-    assert any("images/102" in c for c in delete_calls)
-    assert any("images/103" in c for c in delete_calls)
-    assert not any("images/101" in c for c in delete_calls)
+    assert any("102" in c for c in delete_calls)
+    assert any("103" in c for c in delete_calls)
+    assert not any("101" in c for c in delete_calls)
 
 
 def test_rotate_sh_no_deletion_when_under_limit(tmp_path):
@@ -137,22 +145,21 @@ def test_rotate_sh_no_deletion_when_under_limit(tmp_path):
     mock_bin.mkdir()
     call_log = tmp_path / "calls.log"
 
-    mock_curl = mock_bin / "curl"
-    mock_curl.write_text(f"""#!/usr/bin/env python3
-import json, sys
+    mock_hcloud = mock_bin / "hcloud"
+    mock_hcloud.write_text(f"""#!/usr/bin/env python3
+import sys
 
 args = sys.argv[1:]
 with open('{call_log}', 'a') as f:
     f.write(' '.join(args) + '\\n')
 
-snapshots = {{
-    "images": [
-        {{"id": 201, "description": "image-sole", "created": "2026-10-24T05:00:00Z"}}
-    ]
-}}
-print(json.dumps(snapshots))
+if 'image' in args and 'list' in args:
+    print("201\\t2026-10-24T05:00:00Z\\timage-sole")
+    sys.exit(0)
+
+sys.exit(0)
 """)
-    mock_curl.chmod(0o755)
+    mock_hcloud.chmod(0o755)
 
     env = {
         "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
@@ -169,5 +176,5 @@ print(json.dumps(snapshots))
     assert "No old snapshots to delete" in res.stdout
 
     calls = call_log.read_text().splitlines()
-    delete_calls = [c for c in calls if "-X DELETE" in c]
+    delete_calls = [c for c in calls if "image delete" in c]
     assert len(delete_calls) == 0
