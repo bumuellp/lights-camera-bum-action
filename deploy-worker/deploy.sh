@@ -29,6 +29,11 @@ if [ -n "${WORKER_ENV:-}" ]; then
 	ENV_ARGS+=(--env "$WORKER_ENV")
 fi
 
+NAME_ARGS=()
+if [ -n "${WORKER_NAME:-}" ]; then
+	NAME_ARGS+=(--name "$WORKER_NAME")
+fi
+
 VAR_ARGS=()
 if [ -n "${WORKER_VARS:-}" ]; then
 	while IFS= read -r var_name; do
@@ -44,7 +49,7 @@ if [ -n "${WORKER_VARS:-}" ]; then
 fi
 
 echo "Deploying worker via Wrangler..."
-npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${VAR_ARGS[@]+"${VAR_ARGS[@]}"}
+npx --yes wrangler deploy ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${NAME_ARGS[@]+"${NAME_ARGS[@]}"} ${VAR_ARGS[@]+"${VAR_ARGS[@]}"}
 
 # Provision any requested secrets after worker exists
 if [ -n "${WORKER_SECRETS:-}" ]; then
@@ -55,7 +60,7 @@ if [ -n "${WORKER_SECRETS:-}" ]; then
 		if [ -n "$sec_val" ]; then
 			echo "::add-mask::$sec_val"
 			echo "Provisioning secret '$sec_name'..."
-			printf '%s' "$sec_val" | npx --yes wrangler secret put "$sec_name" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"}
+			printf '%s' "$sec_val" | npx --yes wrangler secret put "$sec_name" ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${NAME_ARGS[@]+"${NAME_ARGS[@]}"}
 		else
 			echo "::warning ::Secret '$sec_name' requested but not set in step environment. Skipping."
 		fi
