@@ -37,7 +37,7 @@ runs:
   steps:
     - name: Setup Hetzner Cloud CLI
       if: inputs.provider == 'hetzner'
-      uses: bumuellp/lights-camera-bum-action/setup-hcloud@v1
+      uses: bumuellp/lights-camera-bum-action/setup-hcloud@ac10d6046ee766e3bd5b7d036c4d1aaf5fb71589 # v1
       with:
         token: ${{ inputs.token }}
 

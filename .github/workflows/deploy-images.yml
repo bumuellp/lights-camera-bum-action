@@ -69,7 +69,7 @@ jobs:
 
       - name: Plan Builds
         id: plan
-        uses: bumuellp/lights-camera-bum-action/plan-image-builds@a9266088302dbbda63132cc9705b14e436c957fd # v1
+        uses: bumuellp/lights-camera-bum-action/plan-image-builds@ac10d6046ee766e3bd5b7d036c4d1aaf5fb71589 # v1
         with:
           images: ${{ inputs.images }}
           target: ${{ inputs.target }}
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Build Image Locally
-        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@a9266088302dbbda63132cc9705b14e436c957fd # v1
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@ac10d6046ee766e3bd5b7d036c4d1aaf5fb71589 # v1
         with:
           context: ${{ matrix.context }}
           dockerfile: ${{ matrix.dockerfile }}
@@ -159,7 +159,7 @@ jobs:
 
       - name: Push Image to GHCR
         if: ${{ inputs.push && github.event_name != 'pull_request' }}
-        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@a9266088302dbbda63132cc9705b14e436c957fd # v1
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@ac10d6046ee766e3bd5b7d036c4d1aaf5fb71589 # v1
         with:
           context: ${{ matrix.context }}
           dockerfile: ${{ matrix.dockerfile }}
@@ -184,7 +184,7 @@ jobs:
       packages: write
     steps:
       - name: Run Retention Cleanup
-        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@a9266088302dbbda63132cc9705b14e436c957fd # v1
+        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@ac10d6046ee766e3bd5b7d036c4d1aaf5fb71589 # v1
         with:
           package-names: ${{ inputs.images }}
           repository-owner: ${{ github.repository_owner }}
