@@ -22,6 +22,7 @@ Reusable, production-grade GitHub Actions suite for CI/CD pipelines, container p
 | **[`setup-tofu-backend`](setup-tofu-backend/)** | Initialize OpenTofu with an S3-compatible remote state backend and masked credentials. | [Read Docs](setup-tofu-backend/README.md) |
 | **[`setup-hcloud`](setup-hcloud/)** | Download, cache, and add the official `hcloud` CLI binary to PATH. | [Read Docs](setup-hcloud/README.md) |
 | **[`rotate-hcloud-snapshots`](rotate-hcloud-snapshots/)** | Prune older Hetzner Cloud snapshots matching a label selector to maintain target retention. | [Read Docs](rotate-hcloud-snapshots/README.md) |
+| **[`resolve-hcloud-placement`](resolve-hcloud-placement/)** | Evaluate and resolve optimal available server types and datacenters using waterfall priority. | [Read Docs](resolve-hcloud-placement/README.md) |
 
 
 ---

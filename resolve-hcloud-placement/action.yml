@@ -1,0 +1,56 @@
+---
+name: Resolve Hetzner Cloud Placement
+description: Finds the optimal available server type and datacenter location in Hetzner Cloud using waterfall priority.
+inputs:
+  token:
+    description: Hetzner Cloud API authentication token.
+    required: true
+  server-types:
+    description: Single model or comma-/newline-separated ordered list of candidate server types (e.g. 'cax21, cax31, cpx32').
+    required: true
+  locations:
+    description: Single location code or comma-/newline-separated ordered list of locations (e.g. 'fsn1, nbg1, hel1').
+    required: false
+    default: 'fsn1'
+  strategy:
+    description: >-
+      Search prioritization strategy ('type-first' tries server types in priority across locations;
+      'location-first' tries locations in priority across types).
+    required: false
+    default: 'type-first'
+  fail-on-unavailable:
+    description: Whether to fail the action if no candidate is available ('true' or 'false').
+    required: false
+    default: 'true'
+outputs:
+  server-type:
+    description: Resolved server type model (e.g. cax21, cpx32).
+    value: ${{ steps.resolve.outputs.server-type }}
+  location:
+    description: Resolved datacenter location code (e.g. fsn1, nbg1).
+    value: ${{ steps.resolve.outputs.location }}
+  architecture:
+    description: CPU architecture of the resolved server type ('arm' or 'x86').
+    value: ${{ steps.resolve.outputs.architecture }}
+  cores:
+    description: Number of vCPU cores of the resolved server type.
+    value: ${{ steps.resolve.outputs.cores }}
+  memory:
+    description: Memory in GB of the resolved server type.
+    value: ${{ steps.resolve.outputs.memory }}
+  available:
+    description: Boolean indicating whether an available placement was found ('true' or 'false').
+    value: ${{ steps.resolve.outputs.available }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve Placement
+      id: resolve
+      shell: bash
+      env:
+        HCLOUD_TOKEN: ${{ inputs.token }}
+        SERVER_TYPES: ${{ inputs.server-types }}
+        LOCATIONS: ${{ inputs.locations }}
+        STRATEGY: ${{ inputs.strategy }}
+        FAIL_ON_UNAVAILABLE: ${{ inputs.fail-on-unavailable }}
+      run: bash "$GITHUB_ACTION_PATH/resolve.sh"
