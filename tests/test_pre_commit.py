@@ -118,7 +118,7 @@ exit 0
     assert res.returncode == 0
 
     logged = log_file.read_text()
-    assert f"pre-commit run {complex_args}" in logged
+    assert f"pre-commit run --show-diff-on-failure {complex_args}" in logged
 
 
 def test_pre_commit_enforces_safe_directory_and_non_root_uid():
