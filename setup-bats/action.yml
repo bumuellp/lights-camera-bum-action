@@ -1,0 +1,31 @@
+---
+name: Setup Bats Testing Framework
+description: Download, cache, and add the bats-core Bash Automated Testing System CLI to PATH.
+inputs:
+  version:
+    description: Version of bats-core to install.
+    required: false
+    # renovate: datasource=github-releases depName=bats-core/bats-core
+    default: 'v1.13.0'
+  cache:
+    description: Whether to enable actions/cache for the bats installation.
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Cache bats-core
+      if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: |
+          ~/.local/bin/bats
+          ~/.local/lib/bats-core
+          ~/.local/libexec/bats-core
+        key: bats-core-${{ runner.os }}-${{ inputs.version }}
+
+    - name: Install bats-core
+      shell: bash
+      env:
+        BATS_VERSION: ${{ inputs.version }}
+      run: bash "$GITHUB_ACTION_PATH/setup.sh"
