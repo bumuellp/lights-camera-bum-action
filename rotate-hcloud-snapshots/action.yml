@@ -16,7 +16,7 @@ runs:
   using: composite
   steps:
     - name: Setup Hetzner Cloud CLI
-      uses: bumuellp/lights-camera-bum-action/setup-hcloud@ac10d6046ee766e3bd5b7d036c4d1aaf5fb71589 # v1
+      uses: bumuellp/lights-camera-bum-action/setup-hcloud@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
       with:
         token: ${{ inputs.token }}
 
