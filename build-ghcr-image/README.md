@@ -34,6 +34,7 @@ Set up Docker Buildx, authenticate to GitHub Container Registry (GHCR), compute 
 | `push` | Whether to push the image to GHCR. | No | `'true'` |
 | `load` | Whether to load image into local Docker daemon. | No | `'false'` |
 | `registry` | Container registry host. | No | `ghcr.io` |
+| `platforms` | Optional target platforms (e.g. `linux/amd64,linux/arm64`). | No | `''` |
 
 ## Tag Expansion Behavior
 The internal `compute_tags.sh` helper expands semantic version release tags into canonical hierarchies:

@@ -26,6 +26,26 @@ inputs:
     description: Whether to install worker-build for Cloudflare Workers ('true' or 'false').
     required: false
     default: 'false'
+  run-fmt:
+    description: Whether to run 'cargo fmt --check' across configured workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  run-clippy:
+    description: Whether to run 'cargo clippy' across configured workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  clippy-args:
+    description: Arguments passed to cargo clippy when run-clippy is 'true'.
+    required: false
+    default: '--all-targets -- -D warnings'
+  run-test:
+    description: Whether to run 'cargo test' across configured workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  test-args:
+    description: Optional additional arguments passed to cargo test when run-test is 'true'.
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -45,8 +65,16 @@ runs:
     - name: Install worker-build
       if: inputs.install-worker-build == 'true'
       shell: bash
-      run: |
-        if ! command -v worker-build >/dev/null 2>&1; then
-          echo "Installing worker-build..."
-          cargo install -q worker-build
-        fi
+      run: bash "$GITHUB_ACTION_PATH/install_worker_build.sh"
+
+    - name: Run Rust Quality Checks (fmt / clippy / test)
+      if: inputs.run-fmt == 'true' || inputs.run-clippy == 'true' || inputs.run-test == 'true'
+      shell: bash
+      env:
+        WORKSPACES: ${{ inputs.workspaces }}
+        RUN_FMT: ${{ inputs.run-fmt }}
+        RUN_CLIPPY: ${{ inputs.run-clippy }}
+        CLIPPY_ARGS: ${{ inputs.clippy-args }}
+        RUN_TEST: ${{ inputs.run-test }}
+        TEST_ARGS: ${{ inputs.test-args }}
+      run: bash "$GITHUB_ACTION_PATH/run_checks.sh"
