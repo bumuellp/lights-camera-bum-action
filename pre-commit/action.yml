@@ -1,147 +1,100 @@
 ---
 name: Pre-Commit Validation & Testing
 description: >-
-  Run pre-commit hooks natively on the runner with auto-detected, cached
-  tool binaries and hook environments (with optional container fallback).
+  Run pre-commit hooks natively with automatic tool discovery (via hook
+  manifests, project mise configs, or inputs) and actions/cache caching.
 inputs:
   extra-args:
     description: Additional arguments to pass to pre-commit run.
     required: false
     default: '--all-files'
+  tools:
+    description: Optional extra mise tool specs (e.g. 'trivy@0.75.0 shfmt@3.14.1').
+    required: false
+    default: ''
   cache:
-    description: Whether to cache tool binaries, pre-commit envs, and Trivy DB ('true' or 'false').
+    description: Whether to cache pre-commit, hook envs, mise tools, and Trivy DB.
     required: false
     default: 'true'
-  use-container:
-    description: Fall back to running inside lint-tools container instead of natively ('true' or 'false').
-    required: false
-    default: 'false'
-  container-image:
-    description: Container image used when use-container is 'true'.
-    required: false
-    default: 'ghcr.io/bumuellp/lint-tools:v1.4.1@sha256:3a6e02e1f03750890b4cc984e516c9552f71049829c751616b3ccb9791b02a46'
   pre-commit-version:
     description: Pinned pre-commit version for native execution.
     required: false
     # renovate: datasource=pypi depName=pre-commit
     default: '4.6.2'
-  yamllint-version:
-    description: Pinned yamllint version for native execution.
+  use-container:
+    description: Fall back to running inside lint-tools container instead of natively.
     required: false
-    # renovate: datasource=pypi depName=yamllint
-    default: '1.37.1'
-  shfmt-version:
-    description: Pinned shfmt release tag.
+    default: 'false'
+  container-image:
+    description: Container image used when use-container is 'true'.
     required: false
-    # renovate: datasource=github-releases depName=mvdan/sh
-    default: 'v3.14.1'
-  trufflehog-version:
-    description: Pinned trufflehog version.
-    required: false
-    # renovate: datasource=github-releases depName=trufflesecurity/trufflehog
-    default: '3.97.4'
-  trivy-version:
-    description: Pinned trivy version.
-    required: false
-    # renovate: datasource=github-releases depName=aquasecurity/trivy
-    default: '0.75.0'
-  tofu-version:
-    description: Pinned OpenTofu version.
-    required: false
-    # renovate: datasource=github-releases depName=opentofu/opentofu
-    default: '1.13.1'
-  hadolint-version:
-    description: Pinned hadolint release tag.
-    required: false
-    # renovate: datasource=github-releases depName=hadolint/hadolint
-    default: 'v2.12.0'
-  kubeconform-version:
-    description: Pinned kubeconform release tag.
-    required: false
-    # renovate: datasource=github-releases depName=yannh/kubeconform
-    default: 'v0.8.0'
-  kubescore-version:
-    description: Pinned kube-score release tag.
-    required: false
-    # renovate: datasource=github-releases depName=zegl/kube-score
-    default: 'v1.20.0'
-  kustomize-version:
-    description: Pinned kustomize release tag.
-    required: false
-    # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
-    default: 'v5.8.1'
-  bats-version:
-    description: Pinned bats-core version.
-    required: false
-    # renovate: datasource=github-releases depName=bats-core/bats-core
-    default: '1.13.0'
+    default: >-
+      ghcr.io/bumuellp/lint-tools:v1.4.1@sha256:3a6e02e1f03750890b4cc984e516c9552f71049829c751616b3ccb9791b02a46
 runs:
   using: 'composite'
   steps:
-    - name: Detect Required Linter Tools
-      id: detect
+    - name: Cache Pre-Commit Python Venv
+      if: inputs.use-container != 'true' && inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ~/.local/share/pre-commit-venv
+        key: precommit-venv-${{ runner.os }}-${{ runner.arch }}-${{ inputs.pre-commit-version }}
+
+    - name: Setup Pre-Commit Environment
       if: inputs.use-container != 'true'
       shell: bash
       env:
         PRE_COMMIT_VERSION: ${{ inputs.pre-commit-version }}
-        YAMLLINT_VERSION: ${{ inputs.yamllint-version }}
-        SHFMT_VERSION: ${{ inputs.shfmt-version }}
-        TRUFFLEHOG_VERSION: ${{ inputs.trufflehog-version }}
-        TRIVY_VERSION: ${{ inputs.trivy-version }}
-        TOFU_VERSION: ${{ inputs.tofu-version }}
-        HADOLINT_VERSION: ${{ inputs.hadolint-version }}
-        KUBECONFORM_VERSION: ${{ inputs.kubeconform-version }}
-        KUBESCORE_VERSION: ${{ inputs.kubescore-version }}
-        KUSTOMIZE_VERSION: ${{ inputs.kustomize-version }}
-      run: bash "$GITHUB_ACTION_PATH/detect_tools.sh"
-
-    - name: Cache Linter Binaries & Python Venv
-      if: inputs.use-container != 'true' && inputs.cache == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-      with:
-        path: |
-          ~/.local/bin
-          ~/.local/share/bats-core
-          ~/.local/share/pre-commit-venv
-        key: precommit-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.detect.outputs.tools_hash }}
+      run: bash "$GITHUB_ACTION_PATH/setup_pre_commit.sh"
 
     - name: Cache Pre-Commit Hook Environments
       if: inputs.use-container != 'true' && inputs.cache == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
       with:
         path: ~/.cache/pre-commit
         key: precommit-envs-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
         restore-keys: |
           precommit-envs-${{ runner.os }}-
 
-    - name: Cache Trivy Vulnerability DB
-      if: inputs.use-container != 'true' && inputs.cache == 'true' && steps.detect.outputs.trivy_enabled == 'true'
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-      with:
-        path: ~/.cache/trivy
-        key: trivy-db-${{ runner.os }}-${{ runner.arch }}-${{ steps.detect.outputs.trivy_db_week }}
-        restore-keys: |
-          trivy-db-${{ runner.os }}-${{ runner.arch }}-
-
-    - name: Install Missing Linter Tools
+    - name: Prepare Hooks & Discover Tool Specs
+      id: discover
       if: inputs.use-container != 'true'
       shell: bash
       env:
-        REQUIRED_TOOLS: ${{ steps.detect.outputs.tools }}
-        PYTEST_ENABLED: ${{ steps.detect.outputs.pytest_enabled }}
-        ANSIBLE_ENABLED: ${{ steps.detect.outputs.ansible_enabled }}
-        PRE_COMMIT_VERSION: ${{ inputs.pre-commit-version }}
-        YAMLLINT_VERSION: ${{ inputs.yamllint-version }}
-        SHFMT_VERSION: ${{ inputs.shfmt-version }}
-        TRUFFLEHOG_VERSION: ${{ inputs.trufflehog-version }}
-        TRIVY_VERSION: ${{ inputs.trivy-version }}
-        TOFU_VERSION: ${{ inputs.tofu-version }}
-        HADOLINT_VERSION: ${{ inputs.hadolint-version }}
-        KUBECONFORM_VERSION: ${{ inputs.kubeconform-version }}
-        KUBESCORE_VERSION: ${{ inputs.kubescore-version }}
-        KUSTOMIZE_VERSION: ${{ inputs.kustomize-version }}
-        BATS_VERSION: ${{ inputs.bats-version }}
-      run: bash "$GITHUB_ACTION_PATH/install_tools.sh"
+        EXTRA_TOOLS: ${{ inputs.tools }}
+      run: bash "$GITHUB_ACTION_PATH/discover_tools.sh"
+
+    - name: Cache Mise & Discovered Tools
+      if: >-
+        inputs.use-container != 'true' &&
+        inputs.cache == 'true' &&
+        steps.discover.outputs.needs_mise == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: |
+          ~/.local/bin/mise
+          ~/.local/share/mise
+          ~/.config/mise/config.toml
+        key: precommit-mise-${{ runner.os }}-${{ runner.arch }}-${{ steps.discover.outputs.tools_hash }}
+
+    - name: Cache Trivy Vulnerability DB
+      if: >-
+        inputs.use-container != 'true' &&
+        inputs.cache == 'true' &&
+        steps.discover.outputs.has_trivy == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ~/.cache/trivy
+        key: trivy-db-${{ runner.os }}-${{ runner.arch }}-${{ steps.discover.outputs.trivy_db_week }}
+        restore-keys: |
+          trivy-db-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Install Discovered Tools via Mise
+      if: inputs.use-container != 'true' && steps.discover.outputs.needs_mise == 'true'
+      shell: bash
+      env:
+        REQUIRED_TOOLS: ${{ steps.discover.outputs.tools }}
+      run: bash "$GITHUB_ACTION_PATH/install_mise_tools.sh"
 
     - name: Run Pre-Commit Hooks (Native)
       if: inputs.use-container != 'true'

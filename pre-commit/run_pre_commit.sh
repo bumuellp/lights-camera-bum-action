@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Run pre-commit hooks natively using cached binaries & hook environments
+# Run pre-commit hooks natively with cached environments & mise tools on PATH
 # ==============================================================================
 set -euo pipefail
 
-BIN_DIR="${HOME}/.local/bin"
 VENV_DIR="${HOME}/.local/share/pre-commit-venv"
-export PATH="${VENV_DIR}/bin:${BIN_DIR}:${PATH}"
+MISE_SHIMS="${HOME}/.local/share/mise/shims"
+export PATH="${VENV_DIR}/bin:${MISE_SHIMS}:${HOME}/.local/bin:${PATH}"
+
+if command -v mise >/dev/null 2>&1; then
+    MISE_PATHS="$(mise bin-paths 2>/dev/null | paste -sd: - || true)"
+    if [ -n "$MISE_PATHS" ]; then
+        export PATH="${MISE_PATHS}:${PATH}"
+    fi
+fi
 
 git config --global --add safe.directory "*"
 
