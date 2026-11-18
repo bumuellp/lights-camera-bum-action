@@ -1,8 +1,11 @@
 # Pre-Commit Validation & Testing (`pre-commit`)
 
-Run containerized pre-commit hooks, linters, formatters, and unit tests across all files using `ghcr.io/bumuellp/lint-tools`.
+Run pre-commit hooks, linters, formatters, and unit tests natively on the runner with automatic tool detection and `actions/cache@v6` caching (plus optional `lint-tools` container fallback).
 
-Eliminates developer toolchain drift by packaging `yamllint`, `shellcheck`, `shfmt`, `kubeconform`, `kube-score`, `kustomize`, `pre-commit`, `uv`, and Go inside a single zero-CVE container image.
+## How Native Caching Works
+1. **Inspect `.pre-commit-config.yaml`**: Only the tools actually referenced by your hooks (`shfmt`, `trufflehog`, `trivy`, `tofu`, `bats`, `hadolint`, `kubeconform`/`kube-score`/`kustomize`, `pytest`, `ansible-lint`) are installed in parallel.
+2. **Cache Binaries, Hook Venvs & Trivy DB**: `~/.local/bin`, `~/.local/share/pre-commit-venv`, `~/.cache/pre-commit`, and `~/.cache/trivy` are cached across runs via `actions/cache@v6` — eliminating the multi-minute container image pull and cold hook setup.
+3. **Optional Container Fallback**: Pass `use-container: 'true'` if a workflow explicitly requires `ghcr.io/bumuellp/lint-tools`.
 
 ## Usage
 
@@ -10,16 +13,15 @@ Eliminates developer toolchain drift by packaging `yamllint`, `shellcheck`, `shf
 - name: Run Pre-Commit & Tests
   uses: bumuellp/lights-camera-bum-action/pre-commit@v1
   with:
-    extra-args: '--all-files'
+    extra-args: '--all-files --show-diff-on-failure'
 ```
 
-## Inputs
+## Key Inputs
 
 | Input | Description | Required | Default |
 | :--- | :--- | :---: | :--- |
 | `extra-args` | Additional arguments to pass to `pre-commit run`. | No | `'--all-files'` |
-
-## Shift-Left Integration
-- In **pull requests and branch pushes**, this action executes the exact same tool versions used on local developer workstations via `cabumtain-hook`.
-- If any linter fails or unit tests (`python-tests.sh` / `pytest`) fail, the action propagates the non-zero exit code, blocking the merge gate.
-- Safely configures `git safe.directory "*"` and maps runner UID `$(id -u):$(id -g)` to prevent permission and file ownership issues.
+| `cache` | Enable `actions/cache` for tools, hook venvs, and Trivy DB. | No | `'true'` |
+| `use-container` | Run inside `lint-tools` container instead of natively. | No | `'false'` |
+| `container-image` | Container image when `use-container: 'true'`. | No | `ghcr.io/bumuellp/lint-tools:v1.4.1@...` |
+| `*-version` | Pinned versions (`pre-commit`, `yamllint`, `shfmt`, `trufflehog`, `trivy`, `tofu`, `hadolint`, `kubeconform`, `kubescore`, `kustomize`, `bats`) tracked by Renovate. | No | *(pinned defaults)* |

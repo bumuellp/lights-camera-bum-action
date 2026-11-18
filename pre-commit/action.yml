@@ -1,24 +1,159 @@
 ---
 name: Pre-Commit Validation & Testing
-description: Run containerized pre-commit hooks, linters, and tests across all files using ghcr.io/bumuellp/lint-tools.
+description: >-
+  Run pre-commit hooks natively on the runner with auto-detected, cached
+  tool binaries and hook environments (with optional container fallback).
 inputs:
   extra-args:
     description: Additional arguments to pass to pre-commit run.
     required: false
     default: '--all-files'
+  cache:
+    description: Whether to cache tool binaries, pre-commit envs, and Trivy DB ('true' or 'false').
+    required: false
+    default: 'true'
+  use-container:
+    description: Fall back to running inside lint-tools container instead of natively ('true' or 'false').
+    required: false
+    default: 'false'
+  container-image:
+    description: Container image used when use-container is 'true'.
+    required: false
+    default: 'ghcr.io/bumuellp/lint-tools:v1.4.1@sha256:3a6e02e1f03750890b4cc984e516c9552f71049829c751616b3ccb9791b02a46'
+  pre-commit-version:
+    description: Pinned pre-commit version for native execution.
+    required: false
+    # renovate: datasource=pypi depName=pre-commit
+    default: '4.6.2'
+  yamllint-version:
+    description: Pinned yamllint version for native execution.
+    required: false
+    # renovate: datasource=pypi depName=yamllint
+    default: '1.37.1'
+  shfmt-version:
+    description: Pinned shfmt release tag.
+    required: false
+    # renovate: datasource=github-releases depName=mvdan/sh
+    default: 'v3.14.1'
+  trufflehog-version:
+    description: Pinned trufflehog version.
+    required: false
+    # renovate: datasource=github-releases depName=trufflesecurity/trufflehog
+    default: '3.97.4'
+  trivy-version:
+    description: Pinned trivy version.
+    required: false
+    # renovate: datasource=github-releases depName=aquasecurity/trivy
+    default: '0.75.0'
+  tofu-version:
+    description: Pinned OpenTofu version.
+    required: false
+    # renovate: datasource=github-releases depName=opentofu/opentofu
+    default: '1.13.1'
+  hadolint-version:
+    description: Pinned hadolint release tag.
+    required: false
+    # renovate: datasource=github-releases depName=hadolint/hadolint
+    default: 'v2.12.0'
+  kubeconform-version:
+    description: Pinned kubeconform release tag.
+    required: false
+    # renovate: datasource=github-releases depName=yannh/kubeconform
+    default: 'v0.8.0'
+  kubescore-version:
+    description: Pinned kube-score release tag.
+    required: false
+    # renovate: datasource=github-releases depName=zegl/kube-score
+    default: 'v1.20.0'
+  kustomize-version:
+    description: Pinned kustomize release tag.
+    required: false
+    # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
+    default: 'v5.8.1'
+  bats-version:
+    description: Pinned bats-core version.
+    required: false
+    # renovate: datasource=github-releases depName=bats-core/bats-core
+    default: '1.13.0'
 runs:
   using: 'composite'
   steps:
-    - name: Run Lint Tools Container
+    - name: Detect Required Linter Tools
+      id: detect
+      if: inputs.use-container != 'true'
+      shell: bash
+      env:
+        PRE_COMMIT_VERSION: ${{ inputs.pre-commit-version }}
+        YAMLLINT_VERSION: ${{ inputs.yamllint-version }}
+        SHFMT_VERSION: ${{ inputs.shfmt-version }}
+        TRUFFLEHOG_VERSION: ${{ inputs.trufflehog-version }}
+        TRIVY_VERSION: ${{ inputs.trivy-version }}
+        TOFU_VERSION: ${{ inputs.tofu-version }}
+        HADOLINT_VERSION: ${{ inputs.hadolint-version }}
+        KUBECONFORM_VERSION: ${{ inputs.kubeconform-version }}
+        KUBESCORE_VERSION: ${{ inputs.kubescore-version }}
+        KUSTOMIZE_VERSION: ${{ inputs.kustomize-version }}
+      run: bash "$GITHUB_ACTION_PATH/detect_tools.sh"
+
+    - name: Cache Linter Binaries & Python Venv
+      if: inputs.use-container != 'true' && inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          ~/.local/bin
+          ~/.local/share/bats-core
+          ~/.local/share/pre-commit-venv
+        key: precommit-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.detect.outputs.tools_hash }}
+
+    - name: Cache Pre-Commit Hook Environments
+      if: inputs.use-container != 'true' && inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/pre-commit
+        key: precommit-envs-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+        restore-keys: |
+          precommit-envs-${{ runner.os }}-
+
+    - name: Cache Trivy Vulnerability DB
+      if: inputs.use-container != 'true' && inputs.cache == 'true' && steps.detect.outputs.trivy_enabled == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/trivy
+        key: trivy-db-${{ runner.os }}-${{ runner.arch }}-${{ steps.detect.outputs.trivy_db_week }}
+        restore-keys: |
+          trivy-db-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Install Missing Linter Tools
+      if: inputs.use-container != 'true'
+      shell: bash
+      env:
+        REQUIRED_TOOLS: ${{ steps.detect.outputs.tools }}
+        PYTEST_ENABLED: ${{ steps.detect.outputs.pytest_enabled }}
+        ANSIBLE_ENABLED: ${{ steps.detect.outputs.ansible_enabled }}
+        PRE_COMMIT_VERSION: ${{ inputs.pre-commit-version }}
+        YAMLLINT_VERSION: ${{ inputs.yamllint-version }}
+        SHFMT_VERSION: ${{ inputs.shfmt-version }}
+        TRUFFLEHOG_VERSION: ${{ inputs.trufflehog-version }}
+        TRIVY_VERSION: ${{ inputs.trivy-version }}
+        TOFU_VERSION: ${{ inputs.tofu-version }}
+        HADOLINT_VERSION: ${{ inputs.hadolint-version }}
+        KUBECONFORM_VERSION: ${{ inputs.kubeconform-version }}
+        KUBESCORE_VERSION: ${{ inputs.kubescore-version }}
+        KUSTOMIZE_VERSION: ${{ inputs.kustomize-version }}
+        BATS_VERSION: ${{ inputs.bats-version }}
+      run: bash "$GITHUB_ACTION_PATH/install_tools.sh"
+
+    - name: Run Pre-Commit Hooks (Native)
+      if: inputs.use-container != 'true'
       shell: bash
       env:
         EXTRA_ARGS: ${{ inputs.extra-args }}
-      run: |
-        docker run --rm \
-          -v "$GITHUB_WORKSPACE:/workspace" \
-          -w /workspace \
-          -u "$(id -u):$(id -g)" \
-          -e HOME=/tmp \
-          -e PRE_COMMIT_HOME=/tmp/pre-commit \
-          ghcr.io/bumuellp/lint-tools:v1.4.1@sha256:3a6e02e1f03750890b4cc984e516c9552f71049829c751616b3ccb9791b02a46 \
-          sh -c 'git config --global --add safe.directory "*" && pre-commit run --show-diff-on-failure '"$EXTRA_ARGS"
+      run: bash "$GITHUB_ACTION_PATH/run_pre_commit.sh"
+
+    - name: Run Pre-Commit Hooks (Container Fallback)
+      if: inputs.use-container == 'true'
+      shell: bash
+      env:
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+        CONTAINER_IMAGE: ${{ inputs.container-image }}
+      run: bash "$GITHUB_ACTION_PATH/run_container.sh"
