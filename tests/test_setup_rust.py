@@ -19,7 +19,14 @@ def test_action_manifest_valid_and_has_no_inline_bash():
         data = yaml.safe_load(f)
 
     assert data["name"] == "Setup Rust Toolchain"
-    for key in ("run-fmt", "run-clippy", "clippy-args", "run-test", "test-args"):
+    for key in (
+        "worker-build-version",
+        "run-fmt",
+        "run-clippy",
+        "clippy-args",
+        "run-test",
+        "test-args",
+    ):
         assert key in data["inputs"]
 
     for step in data["runs"]["steps"]:
@@ -119,3 +126,31 @@ def test_install_worker_build_skips_when_present(tmp_path):
     )
     assert res.returncode == 0
     assert "already available" in res.stdout
+
+
+def test_install_worker_build_uses_version_pin(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    cargo_log = tmp_path / "cargo.log"
+
+    mock_cargo = mock_bin / "cargo"
+    mock_cargo.write_text(f"""#!/usr/bin/env bash
+echo "cargo $*" >> "{cargo_log}"
+exit 0
+""")
+    mock_cargo.chmod(0o755)
+
+    res = subprocess.run(
+        ["bash", str(INSTALL_WORKER_BUILD_SH)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            "PATH": f"{mock_bin}:/usr/bin:/bin",
+            "WORKER_BUILD_VERSION": "0.7.5",
+        },
+    )
+    assert res.returncode == 0, res.stderr
+    assert cargo_log.read_text().splitlines() == [
+        "cargo install -q --locked worker-build --version 0.7.5"
+    ]

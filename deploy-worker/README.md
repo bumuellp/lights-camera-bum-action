@@ -9,7 +9,8 @@ Standardized GitHub Composite Action to build and deploy serverless Cloudflare W
 | `api-token` | Cloudflare API token with `Workers:Edit` permission | **Yes** | — |
 | `working-directory` | Directory containing `wrangler.toml` | No | `.` |
 | `environment` | Optional Cloudflare environment (e.g. `production`) | No | `""` |
-| `secrets` | Multiline list of secret names from `env` to provision | No | `""` |
+| `secrets` | Multiline list of secret names from `env` to provision in bulk | No | `""` |
+| `cache` | Cache `~/.npm` for Wrangler CLI (`true`/`false`) | No | `true` |
 
 ## Usage Example
 

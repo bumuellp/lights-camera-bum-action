@@ -12,6 +12,7 @@ Standardized GitHub Composite Action to set up the Rust toolchain, components, c
 | `cache` | Enable Swatinem/rust-cache (`true`/`false`) | No | `true` |
 | `workspaces` | Workspace paths for cache scoping | No | `""` |
 | `install-worker-build` | Install Cloudflare `worker-build` | No | `false` |
+| `worker-build-version` | Optional `worker-build` version pin & cache key suffix | No | `""` |
 | `run-fmt` | Run `cargo fmt --check` across `workspaces` | No | `false` |
 | `run-clippy` | Run `cargo clippy` across `workspaces` | No | `false` |
 | `clippy-args` | Arguments passed to `cargo clippy` | No | `--all-targets -- -D warnings` |

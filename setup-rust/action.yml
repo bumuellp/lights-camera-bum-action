@@ -26,6 +26,10 @@ inputs:
     description: Whether to install worker-build for Cloudflare Workers ('true' or 'false').
     required: false
     default: 'false'
+  worker-build-version:
+    description: Optional worker-build crate version to pin and scope its binary cache (e.g. '0.7.5').
+    required: false
+    default: ''
   run-fmt:
     description: Whether to run 'cargo fmt --check' across configured workspaces ('true' or 'false').
     required: false
@@ -62,9 +66,18 @@ runs:
       with:
         workspaces: ${{ inputs.workspaces }}
 
+    - name: Cache worker-build Binary
+      if: inputs.install-worker-build == 'true' && inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cargo/bin/worker-build*
+        key: worker-build-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ inputs.worker-build-version || 'latest' }}
+
     - name: Install worker-build
       if: inputs.install-worker-build == 'true'
       shell: bash
+      env:
+        WORKER_BUILD_VERSION: ${{ inputs.worker-build-version }}
       run: bash "$GITHUB_ACTION_PATH/install_worker_build.sh"
 
     - name: Run Rust Quality Checks (fmt / clippy / test)
