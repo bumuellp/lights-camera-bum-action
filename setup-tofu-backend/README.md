@@ -15,6 +15,7 @@ Initializes OpenTofu projects with an S3-compatible remote state backend (e.g. H
 | `access-key` | S3 Access Key ID. | **Yes** | — |
 | `secret-key` | S3 Secret Access Key. | **Yes** | — |
 | `working-directory` | Path to directory containing OpenTofu files. | No | `.` |
+| `cache` | Cache OpenTofu provider plugins via `TF_PLUGIN_CACHE_DIR` (`'true'`/`'false'`). | No | `'true'` |
 
 ---
 

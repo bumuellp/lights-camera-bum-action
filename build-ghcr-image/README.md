@@ -35,6 +35,7 @@ Set up Docker Buildx, authenticate to GitHub Container Registry (GHCR), compute 
 | `load` | Whether to load image into local Docker daemon. | No | `'false'` |
 | `registry` | Container registry host. | No | `ghcr.io` |
 | `platforms` | Optional target platforms (e.g. `linux/amd64,linux/arm64`). | No | `''` |
+| `use-qemu` | Register QEMU binfmt handlers for multi-arch builds (`'true'`/`'false'`). | No | `'true'` |
 
 ## Tag Expansion Behavior
 The internal `compute_tags.sh` helper expands semantic version release tags into canonical hierarchies:

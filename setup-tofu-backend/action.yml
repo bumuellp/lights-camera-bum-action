@@ -30,9 +30,25 @@ inputs:
     description: Optional state encryption passphrase for OpenTofu state encryption.
     required: false
     default: ''
+  cache:
+    description: Whether to cache OpenTofu provider plugins via TF_PLUGIN_CACHE_DIR ('true' or 'false').
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
+    - name: Cache OpenTofu Provider Plugins
+      if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ~/.terraform.d/plugin-cache
+        key: >-
+          tofu-providers-${{ runner.os }}-${{ runner.arch }}-${{
+          hashFiles(format('{0}/**/*.tf', inputs.working-directory),
+          format('{0}/**/.terraform.lock.hcl', inputs.working-directory)) }}
+        restore-keys: |
+          tofu-providers-${{ runner.os }}-${{ runner.arch }}-
+
     - name: Initialize OpenTofu Remote Backend
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -44,28 +60,5 @@ runs:
         S3_ACCESS_KEY: ${{ inputs.access-key }}
         S3_SECRET_KEY: ${{ inputs.secret-key }}
         STATE_PASSPHRASE: ${{ inputs.state-passphrase }}
-      run: |
-        echo "::add-mask::$S3_ACCESS_KEY"
-        echo "::add-mask::$S3_SECRET_KEY"
-
-        export AWS_ACCESS_KEY_ID="$S3_ACCESS_KEY"
-        export AWS_SECRET_ACCESS_KEY="$S3_SECRET_KEY"
-        echo "AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY" >> "$GITHUB_ENV"
-        echo "AWS_SECRET_ACCESS_KEY=$S3_SECRET_KEY" >> "$GITHUB_ENV"
-
-        if [ -n "${STATE_PASSPHRASE:-}" ]; then
-          echo "::add-mask::$STATE_PASSPHRASE"
-          export TF_VAR_state_encryption_passphrase="$STATE_PASSPHRASE"
-          echo "TF_VAR_state_encryption_passphrase=$STATE_PASSPHRASE" >> "$GITHUB_ENV"
-        fi
-
-        echo "Initializing OpenTofu with remote S3 backend..."
-        echo "Bucket:   $S3_BUCKET"
-        echo "Endpoint: $S3_ENDPOINT"
-        echo "Key:      $S3_KEY"
-
-        tofu init \
-          -backend-config="bucket=$S3_BUCKET" \
-          -backend-config="endpoint=$S3_ENDPOINT" \
-          -backend-config="key=$S3_KEY" \
-          -backend-config="region=$S3_REGION"
+        CACHE_PROVIDERS: ${{ inputs.cache }}
+      run: bash "$GITHUB_ACTION_PATH/init.sh"

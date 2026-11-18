@@ -43,11 +43,15 @@ inputs:
     description: Optional comma-separated target platforms for multi-arch builds (e.g. 'linux/amd64,linux/arm64').
     required: false
     default: ''
+  use-qemu:
+    description: Register QEMU binfmt handlers for multi-arch builds ('true' or 'false'). Set 'false' when cross-compiling natively.
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
     - name: Set up QEMU for Multi-Arch Builds
-      if: ${{ inputs.platforms != '' }}
+      if: ${{ inputs.platforms != '' && inputs.use-qemu == 'true' }}
       uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
 
     - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
