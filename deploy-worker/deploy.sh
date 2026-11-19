@@ -68,14 +68,22 @@ if [ -n "${WORKER_SECRETS:-}" ]; then
 
 	if [ "${#SECRET_NAMES[@]}" -gt 0 ]; then
 		echo "Provisioning ${#SECRET_NAMES[@]} secret(s) in bulk..."
-		BULK_JSON="$(node -e '
-			const out = {};
-			for (const name of process.argv.slice(1)) {
-				const val = process.env[name] ?? "";
-				if (val !== "") out[name] = val;
-			}
-			process.stdout.write(JSON.stringify(out));
-		' "${SECRET_NAMES[@]}")"
+		if command -v python3 >/dev/null 2>&1; then
+			BULK_JSON="$(python3 -c '
+import json, os, sys
+out = {n: os.environ[n] for n in sys.argv[1:] if os.environ.get(n, "")}
+sys.stdout.write(json.dumps(out))
+			' "${SECRET_NAMES[@]}")"
+		else
+			BULK_JSON="$(node -e '
+				const out = {};
+				for (const name of process.argv.slice(1)) {
+					const val = process.env[name] ?? "";
+					if (val !== "") out[name] = val;
+				}
+				process.stdout.write(JSON.stringify(out));
+			' "${SECRET_NAMES[@]}")"
+		fi
 		printf '%s' "$BULK_JSON" | npx --yes wrangler secret bulk ${ENV_ARGS[@]+"${ENV_ARGS[@]}"} ${NAME_ARGS[@]+"${NAME_ARGS[@]}"}
 	fi
 fi
