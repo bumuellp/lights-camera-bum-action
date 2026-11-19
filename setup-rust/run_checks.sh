@@ -14,36 +14,36 @@ set -euo pipefail
 TARGETS="${WORKSPACES:-.}"
 
 run_cargo_for_workspaces() {
-    local subcommand="$1"
-    shift
-    local ws
-    for ws in $TARGETS; do
-        local manifest="${ws%/}/Cargo.toml"
-        if [ ! -f "$manifest" ]; then
-            echo "::error ::Cargo manifest not found at '${manifest}'." >&2
-            exit 1
-        fi
-        echo "==> Running cargo ${subcommand} for ${manifest}..."
-        cargo "$subcommand" --manifest-path "$manifest" "$@"
-    done
+	local subcommand="$1"
+	shift
+	local ws
+	for ws in $TARGETS; do
+		local manifest="${ws%/}/Cargo.toml"
+		if [ ! -f "$manifest" ]; then
+			echo "::error ::Cargo manifest not found at '${manifest}'." >&2
+			exit 1
+		fi
+		echo "==> Running cargo ${subcommand} for ${manifest}..."
+		cargo "$subcommand" --manifest-path "$manifest" "$@"
+	done
 }
 
 if [ "${RUN_FMT:-false}" = "true" ]; then
-    run_cargo_for_workspaces fmt --check
+	run_cargo_for_workspaces fmt --check
 fi
 
 if [ "${RUN_CLIPPY:-false}" = "true" ]; then
-    CLIPPY_ARR=()
-    if [ -n "${CLIPPY_ARGS:-}" ]; then
-        read -r -a CLIPPY_ARR <<<"$CLIPPY_ARGS"
-    fi
-    run_cargo_for_workspaces clippy ${CLIPPY_ARR[@]+"${CLIPPY_ARR[@]}"}
+	CLIPPY_ARR=()
+	if [ -n "${CLIPPY_ARGS:-}" ]; then
+		read -r -a CLIPPY_ARR <<<"$CLIPPY_ARGS"
+	fi
+	run_cargo_for_workspaces clippy ${CLIPPY_ARR[@]+"${CLIPPY_ARR[@]}"}
 fi
 
 if [ "${RUN_TEST:-false}" = "true" ]; then
-    TEST_ARR=()
-    if [ -n "${TEST_ARGS:-}" ]; then
-        read -r -a TEST_ARR <<<"$TEST_ARGS"
-    fi
-    run_cargo_for_workspaces test ${TEST_ARR[@]+"${TEST_ARR[@]}"}
+	TEST_ARR=()
+	if [ -n "${TEST_ARGS:-}" ]; then
+		read -r -a TEST_ARR <<<"$TEST_ARGS"
+	fi
+	run_cargo_for_workspaces test ${TEST_ARR[@]+"${TEST_ARR[@]}"}
 fi
