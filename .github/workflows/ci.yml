@@ -31,6 +31,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run Pre-Commit via Shared Action
-        uses: bumuellp/lights-camera-bum-action/pre-commit@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+        uses: bumuellp/lights-camera-bum-action/pre-commit@5ddbb7a43c1bdab312398f243434dd040507c5a7 # v1
         with:
           extra-args: ${{ inputs.extra-args || '--all-files --show-diff-on-failure' }}
