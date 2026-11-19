@@ -1,15 +1,15 @@
 ---
 name: Pre-Commit Validation & Testing
 description: >-
-  Run pre-commit hooks natively with automatic tool discovery (via hook
-  manifests, project mise configs, or inputs) and actions/cache caching.
+  Run pre-commit hooks natively with cached hook environments, mise tool
+  support, and optional lint-tools container fallback.
 inputs:
   extra-args:
     description: Additional arguments to pass to pre-commit run.
     required: false
     default: '--all-files'
   tools:
-    description: Optional extra mise tool specs (e.g. 'trivy@0.75.0 shfmt@3.14.1').
+    description: Optional mise tool specs to install (e.g. 'trivy@0.75.0').
     required: false
     default: ''
   cache:
@@ -56,44 +56,34 @@ runs:
         restore-keys: |
           precommit-envs-${{ runner.os }}-
 
-    - name: Prepare Hooks & Discover Tool Specs
-      id: discover
-      if: inputs.use-container != 'true'
-      shell: bash
-      env:
-        EXTRA_TOOLS: ${{ inputs.tools }}
-      run: bash "$GITHUB_ACTION_PATH/discover_tools.sh"
-
-    - name: Cache Mise & Discovered Tools
-      if: >-
-        inputs.use-container != 'true' &&
-        inputs.cache == 'true' &&
-        steps.discover.outputs.needs_mise == 'true'
+    - name: Cache Mise & Installed Tools
+      if: inputs.use-container != 'true' && inputs.cache == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
       with:
         path: |
           ~/.local/bin/mise
           ~/.local/share/mise
           ~/.config/mise/config.toml
-        key: precommit-mise-${{ runner.os }}-${{ runner.arch }}-${{ steps.discover.outputs.tools_hash }}
+        key: >-
+          precommit-mise-${{ runner.os }}-${{ runner.arch }}-${{
+          hashFiles('.pre-commit-config.yaml', 'mise.toml', '.mise.toml', '.tool-versions') }}
+        restore-keys: |
+          precommit-mise-${{ runner.os }}-${{ runner.arch }}-
 
     - name: Cache Trivy Vulnerability DB
-      if: >-
-        inputs.use-container != 'true' &&
-        inputs.cache == 'true' &&
-        steps.discover.outputs.has_trivy == 'true'
+      if: inputs.use-container != 'true' && inputs.cache == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
       with:
         path: ~/.cache/trivy
-        key: trivy-db-${{ runner.os }}-${{ runner.arch }}-${{ steps.discover.outputs.trivy_db_week }}
+        key: trivy-db-${{ runner.os }}-${{ runner.arch }}
         restore-keys: |
           trivy-db-${{ runner.os }}-${{ runner.arch }}-
 
-    - name: Install Discovered Tools via Mise
-      if: inputs.use-container != 'true' && steps.discover.outputs.needs_mise == 'true'
+    - name: Setup Mise & Project Tools
+      if: inputs.use-container != 'true'
       shell: bash
       env:
-        REQUIRED_TOOLS: ${{ steps.discover.outputs.tools }}
+        REQUIRED_TOOLS: ${{ inputs.tools }}
       run: bash "$GITHUB_ACTION_PATH/install_mise_tools.sh"
 
     - name: Run Pre-Commit Hooks (Native)

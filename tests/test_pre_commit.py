@@ -1,9 +1,7 @@
-"""Unit tests for generic pre-commit action, tool discovery, and mise integration."""
+"""Unit tests for generic pre-commit action and mise integration."""
 
 import os
-import sqlite3
 import subprocess
-import sys
 from pathlib import Path
 
 import yaml
@@ -14,9 +12,6 @@ ACTION_FILE = PRECOMMIT_DIR / "action.yml"
 RUN_NATIVE_SH = PRECOMMIT_DIR / "run_pre_commit.sh"
 RUN_CONTAINER_SH = PRECOMMIT_DIR / "run_container.sh"
 INSTALL_MISE_SH = PRECOMMIT_DIR / "install_mise_tools.sh"
-
-sys.path.insert(0, str(PRECOMMIT_DIR))
-from discover_tools import discover_tools  # noqa: E402
 
 
 def _make_fake_tool(path: Path, body: str) -> None:
@@ -41,97 +36,6 @@ def test_pre_commit_action_manifest_is_generic_and_delegates_scripts():
     for step in data["runs"]["steps"]:
         if "run" in step:
             assert "GITHUB_ACTION_PATH" in step["run"]
-
-
-def test_discover_tools_reads_companion_manifest_description_tags_and_mise_toml(tmp_path):
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    pc_home = tmp_path / "pc-home"
-    pc_home.mkdir()
-
-    # Remote hook repo 1: companion .pre-commit-tools.yaml
-    repo1_dir = pc_home / "repo_a"
-    repo1_dir.mkdir()
-    (repo1_dir / ".pre-commit-tools.yaml").write_text(
-        """
-hook-one:
-  - "tool-alpha@1.2.3"
-hook-unused:
-  - "should-not-install@9.9.9"
-hook-security:
-  - "trivy@0.75.0"
-""",
-        encoding="utf-8",
-    )
-
-    # Remote hook repo 2: [tools: ...] in .pre-commit-hooks.yaml description
-    repo2_dir = pc_home / "repo_b"
-    repo2_dir.mkdir()
-    (repo2_dir / ".pre-commit-hooks.yaml").write_text(
-        """
-- id: docker-check
-  name: Docker Check
-  description: "Lint Dockerfiles [tools: hadolint@2.12.0]"
-  entry: hadolint
-  language: system
-- id: skipped-hook
-  name: Skipped
-  description: "[tools: unused-b@1.0.0]"
-  entry: "true"
-  language: system
-""",
-        encoding="utf-8",
-    )
-
-    with sqlite3.connect(pc_home / "db.db") as conn:
-        conn.execute("CREATE TABLE repos (repo TEXT, ref TEXT, path TEXT)")
-        conn.execute(
-            "INSERT INTO repos VALUES (?, ?, ?)",
-            ("https://example.com/hooks-a", "v1.0.0", str(repo1_dir)),
-        )
-        conn.execute(
-            "INSERT INTO repos VALUES (?, ?, ?)",
-            ("https://example.com/hooks-b", "v2.0.0", str(repo2_dir)),
-        )
-
-    (workspace / ".pre-commit-config.yaml").write_text(
-        """
-repos:
-  - repo: https://example.com/hooks-a
-    rev: v1.0.0
-    hooks:
-      - id: hook-one
-      - id: hook-security
-  - repo: https://example.com/hooks-b
-    rev: v2.0.0
-    hooks:
-      - id: docker-check
-  - repo: local
-    hooks:
-      - id: local-lint
-        name: Local
-        description: "Local check [requires: shfmt@3.14.1]"
-        entry: shfmt
-        language: system
-""",
-        encoding="utf-8",
-    )
-    (workspace / "mise.toml").write_text('[tools]\njq = "1.7.1"\n', encoding="utf-8")
-
-    result = discover_tools(workspace, pc_home, extra_tools_raw="bats@1.13.0")
-    assert result["tools"] == (
-        "bats@1.13.0 hadolint@2.12.0 shfmt@3.14.1 tool-alpha@1.2.3 trivy@0.75.0"
-    )
-    assert result["needs_mise"] == "true"
-    assert result["has_trivy"] == "true"
-    assert len(result["tools_hash"]) == 16
-
-
-def test_discover_tools_handles_empty_config(tmp_path):
-    result = discover_tools(tmp_path, tmp_path / "missing-pc")
-    assert result["tools"] == ""
-    assert result["needs_mise"] == "false"
-    assert result["has_trivy"] == "false"
 
 
 def test_install_mise_tools_runs_uv_before_pipx_and_skips_cached(tmp_path):
@@ -170,7 +74,6 @@ def test_install_mise_tools_runs_uv_before_pipx_and_skips_cached(tmp_path):
     assert calls[2] == "mise use --global --yes uv@0.13.5"
     assert calls[3] == "mise use --global --yes pipx:yamllint@1.37.1 shfmt@3.14.1"
 
-    # Re-running with matching marker & config skips mise use
     (home_dir / ".config" / "mise").mkdir(parents=True)
     (home_dir / ".config" / "mise" / "config.toml").write_text("", encoding="utf-8")
     mise_log.unlink()
