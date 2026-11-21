@@ -14,6 +14,16 @@ name: Reusable Deploy Images
         required: false
         type: string
         default: auto
+      shared-paths:
+        description: Comma- or newline-separated shared paths/prefixes that trigger building all images in auto mode
+        required: false
+        type: string
+        default: ''
+      free-disk-space:
+        description: Whether to free disk space on the runner before building images
+        required: false
+        type: boolean
+        default: false
       scan-with-trivy:
         description: Whether to scan built images with Trivy
         required: false
@@ -69,10 +79,11 @@ jobs:
 
       - name: Plan Builds
         id: plan
-        uses: bumuellp/lights-camera-bum-action/plan-image-builds@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+        uses: bumuellp/lights-camera-bum-action/plan-image-builds@ce883c90219f26eaca2e6202e38c6fe8e23a7db7 # v1
         with:
           images: ${{ inputs.images }}
-          target: ${{ inputs.target }}
+          target: ${{ github.event_name == 'release' && inputs.target == 'auto' && 'all' || inputs.target }}
+          shared-paths: ${{ inputs.shared-paths }}
 
   build-and-push:
     name: Build ${{ matrix.image-name }}
@@ -90,6 +101,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Free Disk Space
+        if: ${{ inputs.free-disk-space }}
+        uses: bumuellp/lights-camera-bum-action/free-disk-space@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+
       - name: Build Image Locally
         uses: bumuellp/lights-camera-bum-action/build-ghcr-image@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
         with:
@@ -101,7 +116,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.registry-token }}
           extra-tags: >-
-            ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
+            ${{ matrix.extra-tags || inputs.extra-tags ||
+            (github.event.release.tag_name != '' && format('{0}, v1', github.event.release.tag_name)) ||
+            (github.ref_type == 'tag' && format('{0}, v1', github.ref_name)) || '' }}
           push: false
           load: true
           registry: ${{ inputs.registry }}
@@ -169,7 +186,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.registry-token }}
           extra-tags: >-
-            ${{ matrix.extra-tags || inputs.extra-tags || (github.ref_type == 'tag' && format('{0}, v1', github.ref_name) || '') }}
+            ${{ matrix.extra-tags || inputs.extra-tags ||
+            (github.event.release.tag_name != '' && format('{0}, v1', github.event.release.tag_name)) ||
+            (github.ref_type == 'tag' && format('{0}, v1', github.ref_name)) || '' }}
           push: true
           load: false
           registry: ${{ inputs.registry }}
