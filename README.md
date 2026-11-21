@@ -9,6 +9,7 @@ Reusable, production-grade GitHub Actions suite for CI/CD pipelines, container p
 | Action | Description | Documentation |
 | :--- | :--- | :--- |
 | **[`pre-commit`](pre-commit/)** | Run containerized pre-commit linters and tests via `ghcr.io/bumuellp/lint-tools`. | [Read Docs](pre-commit/README.md) |
+| **[`setup-node`](setup-node/)** | Standardized Node.js setup with npm caching, Playwright, and lint/typecheck/build/test gates. | [Read Docs](setup-node/README.md) |
 | **[`build-ghcr-image`](build-ghcr-image/)** | Buildx container image builder with GHA caching and dynamic SemVer tag expansion. | [Read Docs](build-ghcr-image/README.md) |
 | **[`bump-version`](bump-version/)** | Automated SemVer release calculator based on Conventional Commits. | [Read Docs](bump-version/README.md) |
 | **[`cleanup-ghcr-packages`](cleanup-ghcr-packages/)** | Automated GHCR image retention policy preserving releases and pruning stale SHAs. | [Read Docs](cleanup-ghcr-packages/README.md) |

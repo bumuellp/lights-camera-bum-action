@@ -1,0 +1,123 @@
+---
+name: Setup Node.js Toolchain
+description: >-
+  Standardized Node.js setup with npm caching, optional Playwright browser
+  setup, and configurable lint/typecheck/build/test gates.
+inputs:
+  node-version:
+    description: Node.js version to set up (e.g. '20', '24').
+    required: false
+    default: '20'
+  node-version-file:
+    description: Optional path to a file containing the Node.js version (e.g. '.nvmrc').
+    required: false
+    default: ''
+  workspaces:
+    description: Space-separated package directories (e.g. 'frontend' or 'apps/web packages/ui').
+    required: false
+    default: '.'
+  cache:
+    description: Whether to enable npm and Playwright browser caching ('true' or 'false').
+    required: false
+    default: 'true'
+  cache-dependency-path:
+    description: Lockfile path or glob passed to actions/setup-node when cache is enabled.
+    required: false
+    default: '**/package-lock.json'
+  install-deps:
+    description: Whether to install npm dependencies ('true' or 'false').
+    required: false
+    default: 'true'
+  install-playwright:
+    description: Whether to install Playwright browsers ('true' or 'false').
+    required: false
+    default: 'false'
+  playwright-browsers:
+    description: Space-separated Playwright browser targets to install.
+    required: false
+    default: 'chromium'
+  run-lint:
+    description: Whether to run the configured lint script across workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  lint-script:
+    description: Package.json script name invoked when run-lint is 'true'.
+    required: false
+    default: 'lint'
+  run-typecheck:
+    description: Whether to run the configured typecheck script across workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  typecheck-script:
+    description: Package.json script name invoked when run-typecheck is 'true'.
+    required: false
+    default: 'typecheck'
+  run-build:
+    description: Whether to run the configured build script across workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  build-script:
+    description: Package.json script name invoked when run-build is 'true'.
+    required: false
+    default: 'build'
+  run-test:
+    description: Whether to run the configured test script across workspaces ('true' or 'false').
+    required: false
+    default: 'false'
+  test-script:
+    description: Package.json script name invoked when run-test is 'true'.
+    required: false
+    default: 'test'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version-file }}
+        cache: ${{ inputs.cache == 'true' && 'npm' || '' }}
+        cache-dependency-path: ${{ inputs.cache == 'true' && inputs.cache-dependency-path || '' }}
+
+    - name: Install Dependencies
+      if: inputs.install-deps == 'true'
+      shell: bash
+      env:
+        WORKSPACES: ${{ inputs.workspaces }}
+      run: bash "$GITHUB_ACTION_PATH/install_deps.sh"
+
+    - name: Cache Playwright Browsers
+      if: inputs.install-playwright == 'true' && inputs.cache == 'true'
+      id: playwright-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+
+    - name: Install Playwright Browsers
+      if: inputs.install-playwright == 'true'
+      shell: bash
+      env:
+        WORKSPACES: ${{ inputs.workspaces }}
+        PLAYWRIGHT_BROWSERS: ${{ inputs.playwright-browsers }}
+        PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+      run: bash "$GITHUB_ACTION_PATH/install_playwright.sh"
+
+    - name: Run Node Quality Checks (lint / typecheck / build / test)
+      if: >-
+        inputs.run-lint == 'true' ||
+        inputs.run-typecheck == 'true' ||
+        inputs.run-build == 'true' ||
+        inputs.run-test == 'true'
+      shell: bash
+      env:
+        WORKSPACES: ${{ inputs.workspaces }}
+        RUN_LINT: ${{ inputs.run-lint }}
+        LINT_SCRIPT: ${{ inputs.lint-script }}
+        RUN_TYPECHECK: ${{ inputs.run-typecheck }}
+        TYPECHECK_SCRIPT: ${{ inputs.typecheck-script }}
+        RUN_BUILD: ${{ inputs.run-build }}
+        BUILD_SCRIPT: ${{ inputs.build-script }}
+        RUN_TEST: ${{ inputs.run-test }}
+        TEST_SCRIPT: ${{ inputs.test-script }}
+      run: bash "$GITHUB_ACTION_PATH/run_checks.sh"
