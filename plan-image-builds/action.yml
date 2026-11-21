@@ -10,6 +10,10 @@ inputs:
     description: Target image name to rebuild on dispatch, 'all', or 'auto' for diff
     required: false
     default: auto
+  shared-paths:
+    description: Comma- or newline-separated shared paths/prefixes that trigger building all images in auto mode
+    required: false
+    default: ''
 outputs:
   matrix:
     description: JSON matrix string formatted for GitHub Actions strategy
@@ -25,6 +29,7 @@ runs:
       env:
         INPUT_IMAGES: ${{ inputs.images }}
         INPUT_TARGET: ${{ inputs.target }}
+        INPUT_SHARED_PATHS: ${{ inputs.shared-paths }}
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_EVENT_BEFORE: ${{ github.event.before }}
       run: python3 "$GITHUB_ACTION_PATH/plan.py"

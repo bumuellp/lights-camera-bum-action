@@ -62,13 +62,30 @@ def get_changed_files(before_sha: str, head_sha: str) -> list:
     diff_cmds.append(["git", "diff", "--name-only", "HEAD"])
 
     for cmd in diff_cmds:
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True, check=False)
-            if res.returncode == 0 and res.stdout.strip():
-                return [line.strip() for line in res.stdout.splitlines() if line.strip()]
-        except Exception:
-            pass
+        res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if res.returncode == 0 and res.stdout.strip():
+            return [line.strip() for line in res.stdout.splitlines() if line.strip()]
     return []
+
+
+def parse_shared_paths(raw_shared_paths: str) -> list[str]:
+    """Parse comma- or whitespace-separated shared paths."""
+    if not raw_shared_paths:
+        return []
+    return [
+        p.strip().rstrip("/")
+        for p in raw_shared_paths.replace(",", "\n").splitlines()
+        if p.strip().rstrip("/")
+    ]
+
+
+def matches_shared_paths(changed_files: list, shared_paths: list[str]) -> bool:
+    """Return True if any changed file matches a configured shared path or prefix."""
+    for changed in changed_files:
+        for sp in shared_paths:
+            if changed == sp or changed.startswith(f"{sp}/"):
+                return True
+    return False
 
 
 def should_build_image(
@@ -115,14 +132,22 @@ def plan_builds(
     target: str,
     before_sha: str,
     head_sha: str,
+    shared_paths: str = "",
 ) -> tuple[dict, bool]:
     """Generate the GitHub Actions matrix and should-build flag."""
     images = parse_image_definitions(raw_images)
     changed_files = get_changed_files(before_sha, head_sha)
 
+    raw_targets = {t.strip() for t in target.replace(",", " ").split() if t.strip()} or {"auto"}
+    effective_target = target
+    if raw_targets == {"auto"} and matches_shared_paths(
+        changed_files, parse_shared_paths(shared_paths)
+    ):
+        effective_target = "all"
+
     include = []
     for img in images:
-        if should_build_image(img, target, changed_files):
+        if should_build_image(img, effective_target, changed_files):
             include.append(
                 {
                     "image-name": img["name"],
@@ -139,6 +164,7 @@ def plan_builds(
 def main() -> None:
     raw_images = os.environ.get("INPUT_IMAGES", "auto")
     target = os.environ.get("INPUT_TARGET", "all")
+    shared_paths = os.environ.get("INPUT_SHARED_PATHS", "")
     before_sha = os.environ.get("GITHUB_EVENT_BEFORE", "")
     head_sha = os.environ.get("GITHUB_SHA", "")
 
@@ -147,6 +173,7 @@ def main() -> None:
         target=target,
         before_sha=before_sha,
         head_sha=head_sha,
+        shared_paths=shared_paths,
     )
 
     matrix_json = json.dumps(matrix)

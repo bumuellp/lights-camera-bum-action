@@ -136,3 +136,67 @@ def test_plan_builds_empty_selection_no_op():
     )
     assert should_build is False
     assert len(matrix["include"]) == 0
+
+
+def test_plan_builds_shared_paths_triggers_all(monkeypatch):
+    raw_images = json.dumps(
+        [
+            {"name": "lint-tools", "path": "images/lint-tools"},
+            {"name": "mcpo", "path": "images/mcpo"},
+        ]
+    )
+    monkeypatch.setattr("plan.get_changed_files", lambda _b, _h: [".trivyignore", "README.md"])
+
+    matrix, should_build = plan_builds(
+        raw_images=raw_images,
+        target="auto",
+        before_sha="",
+        head_sha="",
+        shared_paths=".trivyignore, trivy.yaml, scripts/smoke-test.sh",
+    )
+    assert should_build is True
+    assert [item["image-name"] for item in matrix["include"]] == ["lint-tools", "mcpo"]
+
+
+def test_plan_builds_shared_paths_prefix_and_explicit_target_precedence(monkeypatch):
+    raw_images = json.dumps(
+        [
+            {"name": "lint-tools", "path": "images/lint-tools"},
+            {"name": "mcpo", "path": "images/mcpo"},
+        ]
+    )
+    monkeypatch.setattr("plan.get_changed_files", lambda _b, _h: ["scripts/smoke-test.sh"])
+
+    # Prefix match triggers all in auto mode
+    matrix, should_build = plan_builds(
+        raw_images=raw_images,
+        target="auto",
+        before_sha="",
+        head_sha="",
+        shared_paths="scripts/",
+    )
+    assert should_build is True
+    assert len(matrix["include"]) == 2
+
+    # Explicit target is not overridden by shared_paths
+    matrix_single, should_build_single = plan_builds(
+        raw_images=raw_images,
+        target="mcpo",
+        before_sha="",
+        head_sha="",
+        shared_paths="scripts/",
+    )
+    assert should_build_single is True
+    assert [item["image-name"] for item in matrix_single["include"]] == ["mcpo"]
+
+    # Unrelated file does not trigger shared_paths
+    monkeypatch.setattr("plan.get_changed_files", lambda _b, _h: ["README.md"])
+    matrix_none, should_build_none = plan_builds(
+        raw_images=raw_images,
+        target="auto",
+        before_sha="",
+        head_sha="",
+        shared_paths=".trivyignore, scripts/",
+    )
+    assert should_build_none is False
+    assert len(matrix_none["include"]) == 0

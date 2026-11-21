@@ -19,6 +19,7 @@ Smart build matrix planner for multi-container repositories. Discovers container
 | :--- | :--- | :---: | :--- |
 | `images` | JSON array of image configurations or `'auto'` for directory discovery under `images/`. | No | `auto` |
 | `target` | Target image name to rebuild on dispatch, `'all'`, or `'auto'` to inspect commit diffs. | No | `auto` |
+| `shared-paths` | Comma- or newline-separated shared paths/prefixes that trigger building all images in `'auto'` mode. | No | `''` |
 
 ## Outputs
 
