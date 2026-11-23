@@ -20,7 +20,7 @@ inputs:
     description: Pinned pre-commit version for native execution.
     required: false
     # renovate: datasource=pypi depName=pre-commit
-    default: '4.6.2'
+    default: '4.7.0'
   use-container:
     description: Fall back to running inside lint-tools container instead of natively.
     required: false
