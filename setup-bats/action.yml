@@ -6,7 +6,7 @@ inputs:
     description: Version of bats-core to install.
     required: false
     # renovate: datasource=github-releases depName=bats-core/bats-core
-    default: 'v1.13.0'
+    default: 'v1.14.0'
   cache:
     description: Whether to enable actions/cache for the bats installation.
     required: false
