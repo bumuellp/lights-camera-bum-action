@@ -79,7 +79,7 @@ jobs:
 
       - name: Plan Builds
         id: plan
-        uses: bumuellp/lights-camera-bum-action/plan-image-builds@ce883c90219f26eaca2e6202e38c6fe8e23a7db7 # v1
+        uses: bumuellp/lights-camera-bum-action/plan-image-builds@34fd1ec3bc1c86211628dd1a8ba7cbd7da0a9594 # v1
         with:
           images: ${{ inputs.images }}
           target: ${{ github.event_name == 'release' && inputs.target == 'auto' && 'all' || inputs.target }}
@@ -103,10 +103,10 @@ jobs:
 
       - name: Free Disk Space
         if: ${{ inputs.free-disk-space }}
-        uses: bumuellp/lights-camera-bum-action/free-disk-space@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+        uses: bumuellp/lights-camera-bum-action/free-disk-space@34fd1ec3bc1c86211628dd1a8ba7cbd7da0a9594 # v1
 
       - name: Build Image Locally
-        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@34fd1ec3bc1c86211628dd1a8ba7cbd7da0a9594 # v1
         with:
           context: ${{ matrix.context }}
           dockerfile: ${{ matrix.dockerfile }}
@@ -176,7 +176,7 @@ jobs:
 
       - name: Push Image to GHCR
         if: ${{ inputs.push && github.event_name != 'pull_request' }}
-        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+        uses: bumuellp/lights-camera-bum-action/build-ghcr-image@34fd1ec3bc1c86211628dd1a8ba7cbd7da0a9594 # v1
         with:
           context: ${{ matrix.context }}
           dockerfile: ${{ matrix.dockerfile }}
@@ -203,7 +203,7 @@ jobs:
       packages: write
     steps:
       - name: Run Retention Cleanup
-        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@e13ffa1fb937ece0ff0fb24c0d9b538b80c3de2e # v1
+        uses: bumuellp/lights-camera-bum-action/cleanup-ghcr-packages@34fd1ec3bc1c86211628dd1a8ba7cbd7da0a9594 # v1
         with:
           package-names: ${{ inputs.images }}
           repository-owner: ${{ github.repository_owner }}
