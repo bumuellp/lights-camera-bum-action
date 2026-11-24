@@ -15,7 +15,8 @@ inputs:
   strategy:
     description: >-
       Search prioritization strategy ('type-first' tries server types in priority across locations;
-      'location-first' tries locations in priority across types).
+      'location-first' tries locations in priority across types;
+      'type-price-first' preserves server type priority and picks the cheapest available location).
     required: false
     default: 'type-first'
   fail-on-unavailable:
@@ -38,6 +39,9 @@ outputs:
   memory:
     description: Memory in GB of the resolved server type.
     value: ${{ steps.resolve.outputs.memory }}
+  price-hourly:
+    description: Hourly net price in EUR of the resolved server type and location (empty if unavailable).
+    value: ${{ steps.resolve.outputs.price-hourly }}
   available:
     description: Boolean indicating whether an available placement was found ('true' or 'false').
     value: ${{ steps.resolve.outputs.available }}

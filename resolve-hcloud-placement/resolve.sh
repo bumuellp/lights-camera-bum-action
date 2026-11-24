@@ -65,6 +65,13 @@ if [ "$LOCS_JSON" = "[]" ]; then
 fi
 
 STRATEGY="${STRATEGY:-type-first}"
+case "$STRATEGY" in
+type-first | location-first | type-price-first) ;;
+*)
+	echo "::error ::Invalid strategy '${STRATEGY}' (expected: 'type-first', 'location-first', or 'type-price-first')." >&2
+	exit 1
+	;;
+esac
 FAIL_ON_UNAVAILABLE="${FAIL_ON_UNAVAILABLE:-true}"
 
 echo "Fetching Hetzner Cloud server types..."
@@ -87,22 +94,47 @@ MATCH_JSON="$(echo "$HTTP_BODY" | jq -r \
 	--argjson types "$TYPES_JSON" \
 	--argjson locs "$LOCS_JSON" \
 	--arg strategy "$STRATEGY" '
+	def loc_price($st; $loc):
+		first($st.prices[]? | select(.location == $loc) | .price_hourly.net | select(. != null and . != "")) // "";
+	def loc_price_num($st; $loc):
+		(loc_price($st; $loc) | if . == "" then 1e18 else (try tonumber catch 1e18) end);
 	.server_types as $all |
 	(first(
-		(if $strategy == "location-first" then
-			$locs[] as $l | $types[] as $t | {t: $t, l: $l}
+		if $strategy == "type-price-first" then
+			$types[] as $t |
+			($all[] | select(.name == $t)) as $st |
+			([
+				range(0; ($locs | length)) as $idx |
+				($locs[$idx]) as $l |
+				select([$st.locations[]? | select(.name == $l and .available == true)] | length > 0) |
+				{
+					server_type: $t,
+					location: $l,
+					architecture: $st.architecture,
+					cores: $st.cores,
+					memory: $st.memory,
+					price_hourly: loc_price($st; $l),
+					_price_num: loc_price_num($st; $l),
+					_loc_idx: $idx
+				}
+			] | sort_by([._price_num, ._loc_idx]) | .[] | del(._price_num, ._loc_idx))
 		else
-			$types[] as $t | $locs[] as $l | {t: $t, l: $l}
-		end) as $pair |
-		($all[] | select(.name == $pair.t)) as $st |
-		select([$st.locations[]? | select(.name == $pair.l and .available == true)] | length > 0) |
-		{
-			server_type: $pair.t,
-			location: $pair.l,
-			architecture: $st.architecture,
-			cores: $st.cores,
-			memory: $st.memory
-		}
+			(if $strategy == "location-first" then
+				$locs[] as $l | $types[] as $t | {t: $t, l: $l}
+			else
+				$types[] as $t | $locs[] as $l | {t: $t, l: $l}
+			end) as $pair |
+			($all[] | select(.name == $pair.t)) as $st |
+			select([$st.locations[]? | select(.name == $pair.l and .available == true)] | length > 0) |
+			{
+				server_type: $pair.t,
+				location: $pair.l,
+				architecture: $st.architecture,
+				cores: $st.cores,
+				memory: $st.memory,
+				price_hourly: loc_price($st; $pair.l)
+			}
+		end
 	) // empty)
 ')"
 
@@ -112,8 +144,13 @@ if [ -n "$MATCH_JSON" ] && [ "$MATCH_JSON" != "null" ]; then
 	CHOSEN_ARCH="$(echo "$MATCH_JSON" | jq -r '.architecture')"
 	CHOSEN_CORES="$(echo "$MATCH_JSON" | jq -r '.cores')"
 	CHOSEN_MEMORY="$(echo "$MATCH_JSON" | jq -r '.memory')"
+	CHOSEN_PRICE_HOURLY="$(echo "$MATCH_JSON" | jq -r '.price_hourly // ""')"
 
-	echo "::notice ::Resolved available placement: model='${CHOSEN_TYPE}' (${CHOSEN_ARCH}, ${CHOSEN_CORES} vCPU, ${CHOSEN_MEMORY}GB RAM) in location='${CHOSEN_LOC}'."
+	PRICE_NOTE=""
+	if [ -n "$CHOSEN_PRICE_HOURLY" ]; then
+		PRICE_NOTE=", €${CHOSEN_PRICE_HOURLY}/h net"
+	fi
+	echo "::notice ::Resolved available placement: model='${CHOSEN_TYPE}' (${CHOSEN_ARCH}, ${CHOSEN_CORES} vCPU, ${CHOSEN_MEMORY}GB RAM${PRICE_NOTE}) in location='${CHOSEN_LOC}'."
 
 	if [ -n "${GITHUB_OUTPUT:-}" ]; then
 		{
@@ -122,6 +159,7 @@ if [ -n "$MATCH_JSON" ] && [ "$MATCH_JSON" != "null" ]; then
 			echo "architecture=${CHOSEN_ARCH}"
 			echo "cores=${CHOSEN_CORES}"
 			echo "memory=${CHOSEN_MEMORY}"
+			echo "price-hourly=${CHOSEN_PRICE_HOURLY}"
 			echo "available=true"
 		} >>"$GITHUB_OUTPUT"
 	fi
@@ -142,6 +180,7 @@ else
 				echo "architecture="
 				echo "cores="
 				echo "memory="
+				echo "price-hourly="
 				echo "available=false"
 			} >>"$GITHUB_OUTPUT"
 		fi

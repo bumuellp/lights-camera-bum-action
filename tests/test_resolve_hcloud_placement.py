@@ -32,7 +32,15 @@ def test_action_manifest_valid():
     assert data["inputs"]["fail-on-unavailable"].get("default") == "true"
 
     assert "outputs" in data
-    for out in ["server-type", "location", "architecture", "cores", "memory", "available"]:
+    for out in [
+        "server-type",
+        "location",
+        "architecture",
+        "cores",
+        "memory",
+        "price-hourly",
+        "available",
+    ]:
         assert out in data["outputs"]
 
 
@@ -285,6 +293,7 @@ def test_resolve_sh_all_unavailable_soft(tmp_path):
     outputs = parse_github_output(output_file)
     assert outputs.get("server-type") == "cax31"
     assert outputs.get("location") == "fsn1"
+    assert outputs.get("price-hourly") == ""
     assert outputs.get("available") == "false"
 
 
@@ -310,3 +319,233 @@ def test_resolve_sh_multiline_and_spaces(tmp_path):
     assert outputs.get("server-type") == "cpx32"
     assert outputs.get("location") == "fsn1"
     assert outputs.get("available") == "true"
+
+
+MOCK_PRICED_CATALOG = json.dumps(
+    {
+        "server_types": [
+            {
+                "id": 1,
+                "name": "cax21",
+                "architecture": "arm",
+                "cores": 4,
+                "memory": 8,
+                "locations": [
+                    {"name": "fsn1", "available": True},
+                    {"name": "nbg1", "available": True},
+                    {"name": "hel1", "available": True},
+                ],
+                "prices": [
+                    {"location": "fsn1", "price_hourly": {"net": "0.0120", "gross": "0.0143"}},
+                    {"location": "nbg1", "price_hourly": {"net": "0.0120", "gross": "0.0143"}},
+                    {"location": "hel1", "price_hourly": {"net": "0.0105", "gross": "0.0125"}},
+                ],
+            },
+            {
+                "id": 2,
+                "name": "cax31",
+                "architecture": "arm",
+                "cores": 8,
+                "memory": 16,
+                "locations": [
+                    {"name": "fsn1", "available": False},
+                    {"name": "nbg1", "available": False},
+                    {"name": "hel1", "available": False},
+                ],
+                "prices": [
+                    {"location": "fsn1", "price_hourly": {"net": "0.0230", "gross": "0.0274"}},
+                    {"location": "nbg1", "price_hourly": {"net": "0.0230", "gross": "0.0274"}},
+                    {"location": "hel1", "price_hourly": {"net": "0.0200", "gross": "0.0238"}},
+                ],
+            },
+            {
+                "id": 3,
+                "name": "cpx32",
+                "architecture": "x86",
+                "cores": 4,
+                "memory": 8,
+                "locations": [
+                    {"name": "fsn1", "available": True},
+                    {"name": "nbg1", "available": True},
+                    {"name": "hel1", "available": True},
+                ],
+                "prices": [
+                    {"location": "fsn1", "price_hourly": {"net": "0.0180", "gross": "0.0214"}},
+                    {"location": "nbg1", "price_hourly": {"net": "0.0175", "gross": "0.0208"}},
+                    {"location": "hel1", "price_hourly": {"net": "0.0160", "gross": "0.0190"}},
+                ],
+            },
+            {
+                "id": 4,
+                "name": "cx22",
+                "architecture": "x86",
+                "cores": 2,
+                "memory": 4,
+                "locations": [
+                    {"name": "hel1", "available": True},
+                ],
+                "prices": [
+                    {"location": "hel1", "price_hourly": {"net": "0.0060", "gross": "0.0071"}},
+                ],
+            },
+        ]
+    }
+)
+
+
+def test_resolve_sh_type_price_first_picks_cheapest_location(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    create_mock_curl(mock_bin, MOCK_PRICED_CATALOG)
+    output_file = tmp_path / "github_output"
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "HCLOUD_TOKEN": "valid-token",
+        "SERVER_TYPES": "cax21",
+        "LOCATIONS": "fsn1, nbg1, hel1",
+        "STRATEGY": "type-price-first",
+        "GITHUB_OUTPUT": str(output_file),
+    }
+    res = subprocess.run(
+        ["bash", str(RESOLVE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0, f"Script failed: {res.stderr}\n{res.stdout}"
+    outputs = parse_github_output(output_file)
+    assert outputs.get("server-type") == "cax21"
+    assert outputs.get("location") == "hel1"
+    assert outputs.get("price-hourly") == "0.0105"
+    assert outputs.get("available") == "true"
+
+
+def test_resolve_sh_type_price_first_tiebreaker_uses_location_order(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    create_mock_curl(mock_bin, MOCK_PRICED_CATALOG)
+
+    out_fsn = tmp_path / "out_fsn"
+    res_fsn = subprocess.run(
+        ["bash", str(RESOLVE_SH)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "HCLOUD_TOKEN": "valid-token",
+            "SERVER_TYPES": "cax21",
+            "LOCATIONS": "fsn1, nbg1",
+            "STRATEGY": "type-price-first",
+            "GITHUB_OUTPUT": str(out_fsn),
+        },
+    )
+    assert res_fsn.returncode == 0
+    assert parse_github_output(out_fsn).get("location") == "fsn1"
+
+    out_nbg = tmp_path / "out_nbg"
+    res_nbg = subprocess.run(
+        ["bash", str(RESOLVE_SH)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "HCLOUD_TOKEN": "valid-token",
+            "SERVER_TYPES": "cax21",
+            "LOCATIONS": "nbg1, fsn1",
+            "STRATEGY": "type-price-first",
+            "GITHUB_OUTPUT": str(out_nbg),
+        },
+    )
+    assert res_nbg.returncode == 0
+    assert parse_github_output(out_nbg).get("location") == "nbg1"
+
+
+def test_resolve_sh_type_price_first_preserves_type_priority(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    create_mock_curl(mock_bin, MOCK_PRICED_CATALOG)
+    output_file = tmp_path / "github_output"
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "HCLOUD_TOKEN": "valid-token",
+        "SERVER_TYPES": "cax21, cx22",
+        "LOCATIONS": "fsn1, hel1",
+        "STRATEGY": "type-price-first",
+        "GITHUB_OUTPUT": str(output_file),
+    }
+    res = subprocess.run(
+        ["bash", str(RESOLVE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0
+    outputs = parse_github_output(output_file)
+    assert outputs.get("server-type") == "cax21"
+    assert outputs.get("location") == "hel1"
+    assert outputs.get("price-hourly") == "0.0105"
+
+
+def test_resolve_sh_type_price_first_fallback_type_picks_cheapest(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    create_mock_curl(mock_bin, MOCK_PRICED_CATALOG)
+    output_file = tmp_path / "github_output"
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "HCLOUD_TOKEN": "valid-token",
+        "SERVER_TYPES": "cax31, cpx32",
+        "LOCATIONS": "fsn1, nbg1, hel1",
+        "STRATEGY": "type-price-first",
+        "GITHUB_OUTPUT": str(output_file),
+    }
+    res = subprocess.run(
+        ["bash", str(RESOLVE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0
+    outputs = parse_github_output(output_file)
+    assert outputs.get("server-type") == "cpx32"
+    assert outputs.get("location") == "hel1"
+    assert outputs.get("price-hourly") == "0.0160"
+
+
+def test_resolve_sh_type_price_first_missing_prices_falls_back_to_location_order(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    create_mock_curl(mock_bin, MOCK_CATALOG)
+    output_file = tmp_path / "github_output"
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "HCLOUD_TOKEN": "valid-token",
+        "SERVER_TYPES": "cpx32",
+        "LOCATIONS": "fsn1, nbg1",
+        "STRATEGY": "type-price-first",
+        "GITHUB_OUTPUT": str(output_file),
+    }
+    res = subprocess.run(
+        ["bash", str(RESOLVE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode == 0
+    outputs = parse_github_output(output_file)
+    assert outputs.get("server-type") == "cpx32"
+    assert outputs.get("location") == "fsn1"
+    assert outputs.get("price-hourly") == ""
+
+
+def test_resolve_sh_invalid_strategy(tmp_path):
+    mock_bin = tmp_path / "bin"
+    mock_bin.mkdir()
+    create_mock_curl(mock_bin, MOCK_CATALOG)
+
+    env = {
+        "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+        "HCLOUD_TOKEN": "valid-token",
+        "SERVER_TYPES": "cpx32",
+        "LOCATIONS": "fsn1",
+        "STRATEGY": "invalid-mode",
+    }
+    res = subprocess.run(
+        ["bash", str(RESOLVE_SH)], capture_output=True, text=True, check=False, env=env
+    )
+    assert res.returncode != 0
+    assert "invalid strategy" in res.stderr.lower()
