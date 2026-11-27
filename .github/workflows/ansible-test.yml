@@ -28,16 +28,19 @@ name: Reusable Ansible Collection & Playbook Test
         description: Pinned ansible-core version.
         required: false
         type: string
+        # renovate: datasource=pypi depName=ansible-core
         default: "2.21.4"
       ansible-lint-version:
         description: Pinned ansible-lint version (used when run-lint is true).
         required: false
         type: string
+        # renovate: datasource=pypi depName=ansible-lint
         default: "26.8.0"
       yamllint-version:
         description: Pinned yamllint version (used when run-lint is true).
         required: false
         type: string
+        # renovate: datasource=pypi depName=yamllint
         default: "1.37.1"
       run-lint:
         description: Also run yamllint and ansible-lint.

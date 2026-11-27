@@ -36,13 +36,15 @@ def _venv_dir() -> Path:
 
 def _run_cmd(cmd: list[str], env: dict[str, str] | None = None) -> int:
     """Run a subprocess without raising, returning its exit code."""
+    sys.stdout.flush()
+    sys.stderr.flush()
     return subprocess.run(cmd, env=env, check=False).returncode
 
 
 def cmd_setup() -> int:
     """Ensure the isolated ansible-core (and optional lint) venv matches spec."""
     venv_dir = _venv_dir()
-    run_lint = os.environ.get("RUN_LINT", "false").lower() == "true"
+    run_lint = os.environ.get("RUN_LINT", "false").strip().lower() == "true"
     marker_file = venv_dir / ".installed-spec"
 
     core_ver = os.environ.get("ANSIBLE_CORE_VERSION") or DEFAULT_ANSIBLE_CORE_VERSION
@@ -50,7 +52,7 @@ def cmd_setup() -> int:
     yaml_ver = os.environ.get("YAMLLINT_VERSION") or DEFAULT_YAMLLINT_VERSION
 
     pkgs = [f"ansible-core=={core_ver}"]
-    required_bins = ["ansible-playbook", "ansible-galaxy"]
+    required_bins = ["python", "ansible-playbook", "ansible-galaxy"]
     if run_lint:
         pkgs.extend([f"ansible-lint=={lint_ver}", f"yamllint=={yaml_ver}"])
         required_bins.extend(["ansible-lint", "yamllint"])
@@ -107,9 +109,20 @@ def _install_galaxy_dependencies(
     deps = data.get("dependencies") or {}
     if not deps:
         return 0
+    if not isinstance(deps, dict):
+        print(
+            f"ERROR: dependencies in {galaxy_file} must be a mapping",
+            file=sys.stderr,
+        )
+        return 1
 
     deps_req = tmp_dir / "galaxy-deps.yml"
-    items = [{"name": name, "version": str(ver)} for name, ver in deps.items()]
+    items = [
+        {"name": name, "version": str(ver)}
+        if ver is not None and str(ver).strip()
+        else {"name": name}
+        for name, ver in deps.items()
+    ]
     deps_req.write_text(yaml.safe_dump({"collections": items}), encoding="utf-8")
     print(f"=== Installing collection dependencies from {galaxy_file} ===")
     return _run_cmd(
@@ -204,7 +217,7 @@ def cmd_run() -> int:
     inventory = _env_or_default("INVENTORY", DEFAULT_INVENTORY)
     galaxy_raw = _env_or_default("GALAXY_FILE", DEFAULT_GALAXY_FILE)
     requirements_raw = _env_or_default("REQUIREMENTS_FILE", DEFAULT_REQUIREMENTS_FILE)
-    run_lint = os.environ.get("RUN_LINT", "false").lower() == "true"
+    run_lint = os.environ.get("RUN_LINT", "false").strip().lower() == "true"
 
     env = os.environ.copy()
     venv_bin = _venv_dir() / "bin"
@@ -282,6 +295,8 @@ def cmd_run() -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Parse CLI subcommands and dispatch to setup or run."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
     parser = argparse.ArgumentParser(description="Ansible collection test helper")
     parser.add_argument("command", choices=["setup", "run"])
     args = parser.parse_args(argv)

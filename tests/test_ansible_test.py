@@ -125,6 +125,13 @@ def test_action_and_workflow_valid_and_defaults_match():
     ):
         assert action_data["inputs"][key]["default"] == wf_inputs[key]["default"]
 
+    wf_text = WORKFLOW_FILE.read_text(encoding="utf-8")
+    action_text = ACTION_FILE.read_text(encoding="utf-8")
+    for dep in ("ansible-core", "ansible-lint", "yamllint"):
+        marker = f"# renovate: datasource=pypi depName={dep}"
+        assert marker in action_text
+        assert marker in wf_text
+
     script_text = SCRIPT_FILE.read_text(encoding="utf-8")
     assert action_data["inputs"]["ansible-core-version"]["default"] in script_text
     assert action_data["inputs"]["ansible-lint-version"]["default"] in script_text
@@ -138,7 +145,7 @@ def test_script_is_executable():
 def test_setup_skips_reinstall_when_marker_matches(tmp_path):
     venv = tmp_path / "venv"
     (venv / "bin").mkdir(parents=True)
-    for name in ("ansible-playbook", "ansible-galaxy"):
+    for name in ("python", "ansible-playbook", "ansible-galaxy"):
         _write_exec(venv / "bin" / name, "exit 0\n")
     (venv / ".installed-spec").write_text(f"py{_py_minor()} ansible-core==9.9.9")
 
@@ -191,7 +198,7 @@ def test_setup_reinstalls_via_uv_when_binary_missing(tmp_path):
 def test_setup_reinstalls_with_clear_and_pip_fallback(tmp_path):
     venv = tmp_path / "venv"
     (venv / "bin").mkdir(parents=True)
-    for name in ("ansible-playbook", "ansible-galaxy"):
+    for name in ("python", "ansible-playbook", "ansible-galaxy"):
         _write_exec(venv / "bin" / name, "exit 0\n")
     (venv / ".installed-spec").write_text("py3.0 ansible-core==1.0.0")
 
@@ -432,3 +439,65 @@ def test_run_propagates_syntax_check_failure(tmp_path):
         {"PLAYBOOKS_GLOB": "playbooks/*.yml", "GALAXY_FILE": ""},
     )
     assert res.returncode == 4
+
+
+def test_setup_reinstalls_when_venv_python_missing(tmp_path):
+    venv = tmp_path / "venv"
+    (venv / "bin").mkdir(parents=True)
+    for name in ("ansible-playbook", "ansible-galaxy"):
+        _write_exec(venv / "bin" / name, "exit 0\n")
+    (venv / ".installed-spec").write_text(f"py{_py_minor()} ansible-core==9.9.9")
+
+    mock_bin = tmp_path / "mockbin"
+    mock_bin.mkdir()
+    log = tmp_path / "install.log"
+    _write_exec(mock_bin / "uv", f'echo "uv $*" >> "{log}"\nexit 0\n')
+
+    res = subprocess.run(
+        [sys.executable, str(SCRIPT_FILE), "setup"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "HOME": str(tmp_path),
+            "ANSIBLE_VENV_DIR": str(venv),
+            "ANSIBLE_CORE_VERSION": "9.9.9",
+            "RUN_LINT": "false",
+        },
+    )
+    assert res.returncode == 0, res.stderr
+    assert "ansible-core==9.9.9" in log.read_text()
+
+
+def test_run_skips_deps_when_galaxy_has_no_deps_and_requirements_disabled(tmp_path):
+    _make_project(tmp_path)
+    (tmp_path / "requirements.yml").write_text("collections: []\n")
+    venv, log, _ = _make_mock_venv(tmp_path)
+
+    res = _run_cli(
+        tmp_path,
+        venv,
+        {
+            "PLAYBOOKS_GLOB": "playbooks/a.yml",
+            "GALAXY_FILE": "galaxy.yml",
+            "REQUIREMENTS_FILE": "",
+        },
+    )
+    assert res.returncode == 0, res.stderr
+    lines = log.read_text().splitlines()
+    assert not any("galaxy-deps.yml" in line for line in lines)
+    assert not any("requirements.yml" in line for line in lines)
+
+
+def test_run_propagates_galaxy_failure(tmp_path):
+    _make_project(tmp_path, deps={"ansible.posix": None})
+    venv, _, _ = _make_mock_venv(tmp_path)
+    _write_exec(venv / "bin" / "ansible-galaxy", "exit 5\n")
+
+    res = _run_cli(
+        tmp_path,
+        venv,
+        {"PLAYBOOKS_GLOB": "playbooks/a.yml", "GALAXY_FILE": "galaxy.yml"},
+    )
+    assert res.returncode == 5
