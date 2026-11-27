@@ -1,0 +1,53 @@
+---
+name: OpenTofu Module Validate & Test
+description: Set up OpenTofu, cache provider plugins, validate modules, and run .tftest.hcl/.tftest.json suites.
+inputs:
+  modules-glob:
+    description: Space-separated glob pattern(s) of OpenTofu module directories to validate and test.
+    required: false
+    default: 'modules/*'
+  tofu-version:
+    description: Explicit OpenTofu version (leave empty to read from tofu-version-file).
+    required: false
+    default: ''
+  tofu-version-file:
+    description: Path to file containing the OpenTofu version (e.g. .tofu-version).
+    required: false
+    default: '.tofu-version'
+  cache:
+    description: Whether to cache OpenTofu provider plugins via TF_PLUGIN_CACHE_DIR ('true' or 'false').
+    required: false
+    default: 'true'
+  run-tests:
+    description: Whether to execute `tofu test` when .tftest.hcl or .tftest.json files exist ('true' or 'false').
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Set up OpenTofu
+      uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4  # v2.0.2
+      with:
+        tofu_version: ${{ inputs.tofu-version }}
+        tofu_version_file: ${{ inputs.tofu-version == '' && inputs.tofu-version-file || '' }}
+        tofu_wrapper: false
+
+    - name: Cache OpenTofu Provider Plugins
+      if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ${{ runner.temp }}/tofu-plugin-cache
+        key: >-
+          tofu-plugins-${{ runner.os }}-${{ runner.arch }}-${{
+          hashFiles('**/versions.tf', '**/.terraform.lock.hcl', inputs.tofu-version-file) }}
+        restore-keys: |
+          tofu-plugins-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Validate & Test Modules
+      shell: bash
+      env:
+        MODULES_GLOB: ${{ inputs.modules-glob }}
+        RUN_TESTS: ${{ inputs.run-tests }}
+        CACHE_PROVIDERS: ${{ inputs.cache }}
+        TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/tofu-plugin-cache
+      run: bash "$GITHUB_ACTION_PATH/validate_and_test.sh"
