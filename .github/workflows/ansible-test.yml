@@ -1,0 +1,85 @@
+---
+name: Reusable Ansible Collection & Playbook Test
+
+"on":
+  workflow_call:
+    inputs:
+      playbooks-glob:
+        description: Space-separated glob pattern(s) of playbooks to syntax-check.
+        required: false
+        type: string
+        default: "playbooks/*.yml tests/*playbook*.yml"
+      inventory:
+        description: Inventory file passed to ansible-playbook (empty to omit).
+        required: false
+        type: string
+        default: "tests/inventory.ini"
+      galaxy-file:
+        description: Path to galaxy.yml; if present the collection is built and installed.
+        required: false
+        type: string
+        default: "galaxy.yml"
+      requirements-file:
+        description: Path to a collections requirements.yml; if present it is installed.
+        required: false
+        type: string
+        default: "requirements.yml"
+      ansible-core-version:
+        description: Pinned ansible-core version.
+        required: false
+        type: string
+        # renovate: datasource=pypi depName=ansible-core
+        default: "2.21.4"
+      ansible-lint-version:
+        description: Pinned ansible-lint version (used when run-lint is true).
+        required: false
+        type: string
+        # renovate: datasource=pypi depName=ansible-lint
+        default: "26.8.0"
+      yamllint-version:
+        description: Pinned yamllint version (used when run-lint is true).
+        required: false
+        type: string
+        # renovate: datasource=pypi depName=yamllint
+        default: "1.37.1"
+      run-lint:
+        description: Also run yamllint and ansible-lint.
+        required: false
+        type: boolean
+        default: false
+      cache:
+        description: Whether to cache the Python virtualenv and Galaxy collections.
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ansible-test:
+    name: Validate & Syntax-Check Ansible
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Validate & Syntax-Check Ansible
+        uses: bumuellp/lights-camera-bum-action/ansible-test@v1
+        with:
+          playbooks-glob: ${{ inputs.playbooks-glob }}
+          inventory: ${{ inputs.inventory }}
+          galaxy-file: ${{ inputs.galaxy-file }}
+          requirements-file: ${{ inputs.requirements-file }}
+          ansible-core-version: ${{ inputs.ansible-core-version }}
+          ansible-lint-version: ${{ inputs.ansible-lint-version }}
+          yamllint-version: ${{ inputs.yamllint-version }}
+          run-lint: ${{ format('{0}', inputs.run-lint) }}
+          cache: ${{ format('{0}', inputs.cache) }}

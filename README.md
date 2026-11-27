@@ -22,6 +22,7 @@ Reusable, production-grade GitHub Actions suite for CI/CD pipelines, container p
 | **[`decrypt-sops`](decrypt-sops/)** | Decrypt SOPS-encrypted secrets using an Age secret key with automatic binary resolution. | [Read Docs](decrypt-sops/README.md) |
 | **[`setup-tofu-backend`](setup-tofu-backend/)** | Initialize OpenTofu with an S3-compatible remote state backend and masked credentials. | [Read Docs](setup-tofu-backend/README.md) |
 | **[`tofu-module-test`](tofu-module-test/)** | Set up OpenTofu, cache providers, and run `tofu validate` + `tofu test` across modules. | [Read Docs](tofu-module-test/README.md) |
+| **[`ansible-test`](ansible-test/)** | Cached `ansible-core` venv, collection build/install, and `--syntax-check` across discovered playbooks. | [Read Docs](ansible-test/README.md) |
 | **[`setup-hcloud`](setup-hcloud/)** | Download, cache, and add the official `hcloud` CLI binary to PATH. | [Read Docs](setup-hcloud/README.md) |
 | **[`setup-bats`](setup-bats/)** | Download, cache, and add the `bats-core` Bash testing framework CLI to PATH. | [Read Docs](setup-bats/README.md) |
 | **[`rotate-hcloud-snapshots`](rotate-hcloud-snapshots/)** | Prune older Hetzner Cloud snapshots matching a label selector to maintain target retention. | [Read Docs](rotate-hcloud-snapshots/README.md) |
@@ -84,7 +85,7 @@ This repository employs a 3-tier testing architecture:
 1. **Static Analysis & Schema Validation**:
    - `pre-commit` enforces `yamllint`, `shellcheck`, and `check-jsonschema` (verifying action and workflow manifests against official GitHub Action schemas).
 2. **Unit & Behavioral Testing**:
-   - 40 unit tests in `tests/` executed via `pytest`, testing Python helpers, bash execution scripts, exit code propagation, whitespace handling, and error conditions.
+   - Unit tests in `tests/` executed via `pytest`, testing Python helpers, bash execution scripts, exit code propagation, whitespace handling, and error conditions.
 3. **Integration Testing (`act`)**:
    - `.github/workflows/integration-tests.yml` exercises every composite action with positive and negative test cases.
    - Runnable in CI on PRs, or locally via `act -W .github/workflows/integration-tests.yml`.
