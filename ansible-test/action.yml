@@ -62,7 +62,7 @@ runs:
         ANSIBLE_LINT_VERSION: ${{ inputs.ansible-lint-version }}
         YAMLLINT_VERSION: ${{ inputs.yamllint-version }}
         RUN_LINT: ${{ inputs.run-lint }}
-      run: bash "$GITHUB_ACTION_PATH/setup_ansible.sh"
+      run: python3 "$GITHUB_ACTION_PATH/ansible_test.py" setup
 
     - name: Cache Ansible Galaxy Collections
       if: inputs.cache == 'true' && hashFiles(inputs.galaxy-file, inputs.requirements-file) != ''
@@ -83,4 +83,6 @@ runs:
         GALAXY_FILE: ${{ inputs.galaxy-file }}
         REQUIREMENTS_FILE: ${{ inputs.requirements-file }}
         RUN_LINT: ${{ inputs.run-lint }}
-      run: bash "$GITHUB_ACTION_PATH/run_ansible_test.sh"
+      run: >-
+        "$HOME/.local/share/ansible-test-venv/bin/python"
+        "$GITHUB_ACTION_PATH/ansible_test.py" run
