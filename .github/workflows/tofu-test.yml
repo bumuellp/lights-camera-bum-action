@@ -1,0 +1,58 @@
+---
+name: Reusable OpenTofu Module Validate & Test
+
+"on":
+  workflow_call:
+    inputs:
+      modules-glob:
+        description: Space-separated glob pattern(s) of OpenTofu module directories.
+        required: false
+        type: string
+        default: "modules/*"
+      tofu-version:
+        description: Explicit OpenTofu version (leave empty to read tofu-version-file).
+        required: false
+        type: string
+        default: ""
+      tofu-version-file:
+        description: Path to file containing the OpenTofu version.
+        required: false
+        type: string
+        default: ".tofu-version"
+      cache:
+        description: Whether to cache OpenTofu provider plugins.
+        required: false
+        type: boolean
+        default: true
+      run-tests:
+        description: Whether to run `tofu test` when .tftest.hcl/.tftest.json files exist.
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tofu-test:
+    name: Validate & Test OpenTofu Modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Validate & Test OpenTofu Modules
+        uses: bumuellp/lights-camera-bum-action/tofu-module-test@v1
+        with:
+          modules-glob: ${{ inputs.modules-glob }}
+          tofu-version: ${{ inputs.tofu-version }}
+          tofu-version-file: ${{ inputs.tofu-version-file }}
+          cache: ${{ format('{0}', inputs.cache) }}
+          run-tests: ${{ format('{0}', inputs.run-tests) }}
