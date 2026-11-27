@@ -85,7 +85,7 @@ This repository employs a 3-tier testing architecture:
 1. **Static Analysis & Schema Validation**:
    - `pre-commit` enforces `yamllint`, `shellcheck`, and `check-jsonschema` (verifying action and workflow manifests against official GitHub Action schemas).
 2. **Unit & Behavioral Testing**:
-   - 40 unit tests in `tests/` executed via `pytest`, testing Python helpers, bash execution scripts, exit code propagation, whitespace handling, and error conditions.
+   - Unit tests in `tests/` executed via `pytest`, testing Python helpers, bash execution scripts, exit code propagation, whitespace handling, and error conditions.
 3. **Integration Testing (`act`)**:
    - `.github/workflows/integration-tests.yml` exercises every composite action with positive and negative test cases.
    - Runnable in CI on PRs, or locally via `act -W .github/workflows/integration-tests.yml`.

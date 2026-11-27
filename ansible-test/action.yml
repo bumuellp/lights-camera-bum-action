@@ -65,7 +65,7 @@ runs:
       run: bash "$GITHUB_ACTION_PATH/setup_ansible.sh"
 
     - name: Cache Ansible Galaxy Collections
-      if: inputs.cache == 'true'
+      if: inputs.cache == 'true' && hashFiles(inputs.galaxy-file, inputs.requirements-file) != ''
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
       with:
         path: ~/.ansible/collections
