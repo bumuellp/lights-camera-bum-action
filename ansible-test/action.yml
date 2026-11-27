@@ -1,0 +1,86 @@
+---
+name: Ansible Collection & Playbook Validate
+description: >-
+  Set up a cached ansible-core virtualenv, build and install the local
+  collection and its Galaxy dependencies, and syntax-check discovered playbooks.
+inputs:
+  playbooks-glob:
+    description: Space-separated glob pattern(s) of playbooks to syntax-check.
+    required: false
+    default: 'playbooks/*.yml tests/*playbook*.yml'
+  inventory:
+    description: Inventory file passed to ansible-playbook (empty to omit).
+    required: false
+    default: 'tests/inventory.ini'
+  galaxy-file:
+    description: Path to galaxy.yml; if present the collection is built and installed (empty to skip).
+    required: false
+    default: 'galaxy.yml'
+  requirements-file:
+    description: Path to a collections requirements.yml; if present it is installed (empty to skip).
+    required: false
+    default: 'requirements.yml'
+  ansible-core-version:
+    description: Pinned ansible-core version.
+    required: false
+    # renovate: datasource=pypi depName=ansible-core
+    default: '2.21.4'
+  ansible-lint-version:
+    description: Pinned ansible-lint version (used when run-lint is 'true').
+    required: false
+    # renovate: datasource=pypi depName=ansible-lint
+    default: '26.8.0'
+  yamllint-version:
+    description: Pinned yamllint version (used when run-lint is 'true').
+    required: false
+    # renovate: datasource=pypi depName=yamllint
+    default: '1.37.1'
+  run-lint:
+    description: Also run yamllint and ansible-lint ('true' or 'false').
+    required: false
+    default: 'false'
+  cache:
+    description: Whether to cache the Python virtualenv and Galaxy collections ('true' or 'false').
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Cache Ansible Python Venv
+      if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ~/.local/share/ansible-test-venv
+        key: >-
+          ansible-venv-${{ runner.os }}-${{ runner.arch }}-${{ inputs.ansible-core-version }}-${{
+          inputs.run-lint == 'true' && format('{0}-{1}', inputs.ansible-lint-version, inputs.yamllint-version) || 'nolint' }}
+
+    - name: Setup Ansible Environment
+      shell: bash
+      env:
+        ANSIBLE_CORE_VERSION: ${{ inputs.ansible-core-version }}
+        ANSIBLE_LINT_VERSION: ${{ inputs.ansible-lint-version }}
+        YAMLLINT_VERSION: ${{ inputs.yamllint-version }}
+        RUN_LINT: ${{ inputs.run-lint }}
+      run: bash "$GITHUB_ACTION_PATH/setup_ansible.sh"
+
+    - name: Cache Ansible Galaxy Collections
+      if: inputs.cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+      with:
+        path: ~/.ansible/collections
+        key: >-
+          ansible-collections-${{ runner.os }}-${{ runner.arch }}-${{
+          hashFiles(inputs.galaxy-file, inputs.requirements-file) }}
+        restore-keys: |
+          ansible-collections-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Build, Install & Syntax-Check Ansible
+      shell: bash
+      env:
+        PLAYBOOKS_GLOB: ${{ inputs.playbooks-glob }}
+        INVENTORY: ${{ inputs.inventory }}
+        GALAXY_FILE: ${{ inputs.galaxy-file }}
+        REQUIREMENTS_FILE: ${{ inputs.requirements-file }}
+        RUN_LINT: ${{ inputs.run-lint }}
+      run: bash "$GITHUB_ACTION_PATH/run_ansible_test.sh"
